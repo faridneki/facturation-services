@@ -15,9 +15,15 @@ export const createPool = () => {
     const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
 
     if (connectionString) {
-      const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+      // Clean connection string for node-postgres compatibility (e.g. remove unsupported channel_binding)
+      let cleanConnectionString = connectionString
+        .replace(/([?&])channel_binding=[^&]*&?/g, '$1')
+        .replace(/\?$/, '')
+        .replace(/&$/, '');
+
+      const isLocalhost = cleanConnectionString.includes('localhost') || cleanConnectionString.includes('127.0.0.1');
       global._postgresPool = new Pool({
-        connectionString,
+        connectionString: cleanConnectionString,
         ssl: isLocalhost ? false : { rejectUnauthorized: false },
         max: 10,
         connectionTimeoutMillis: 15000,
