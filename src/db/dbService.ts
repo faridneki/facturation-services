@@ -7,6 +7,15 @@ import { initialClients, initialCompanySettings, initialInvoices } from '../data
 // Helper to seed Cloud SQL if database is completely empty
 export async function seedCloudSQLIfEmpty() {
   try {
+    const existingUsers = await db.select().from(users).limit(1);
+    if (existingUsers.length === 0) {
+      console.log('Seeding initial admin user to Cloud SQL...');
+      await db.insert(users).values({
+        uid: 'admin-1',
+        email: 'admin@facturation.com',
+      }).onConflictDoNothing();
+    }
+
     const existingCompany = await db.select().from(companyInfo).limit(1);
     if (existingCompany.length === 0) {
       console.log('Seeding initial company settings to Cloud SQL...');
@@ -88,6 +97,16 @@ export async function seedCloudSQLIfEmpty() {
   }
 }
 
+// Users
+export async function getAllUsers() {
+  try {
+    return await db.select().from(users);
+  } catch (error) {
+    console.error('Failed to get users:', error);
+    return [];
+  }
+}
+
 // Company Info
 export async function getCompanySettings(uid?: string): Promise<CompanySettings> {
   try {
@@ -104,7 +123,7 @@ export async function getCompanySettings(uid?: string): Promise<CompanySettings>
     return mapCompanyRow(rows[0]);
   } catch (error) {
     console.error('Failed to get company settings:', error);
-    throw new Error('Database query failed', { cause: error });
+    return initialCompanySettings;
   }
 }
 
@@ -179,7 +198,7 @@ export async function getAllClients(): Promise<Client[]> {
     return rows.map(mapClientRow);
   } catch (error) {
     console.error('Failed to get clients from Cloud SQL:', error);
-    throw new Error('Database query failed', { cause: error });
+    return initialClients;
   }
 }
 
@@ -278,7 +297,7 @@ export async function getAllInvoices(): Promise<Invoice[]> {
     });
   } catch (error) {
     console.error('Failed to fetch invoices from Cloud SQL:', error);
-    throw new Error('Database query failed', { cause: error });
+    return initialInvoices;
   }
 }
 

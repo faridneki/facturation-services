@@ -10,9 +10,10 @@ import { InvoiceList } from './components/InvoiceList';
 import { LoginScreen } from './components/LoginScreen';
 import { Navbar } from './components/Navbar';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
-
+import { PrismaCodeModal } from './components/PrismaCodeModal';
 import { api } from './services/api';
 import { authService, User } from './services/authService';
+import { initialClients, initialCompanySettings, initialInvoices } from './data/initialData';
 import { Client, CompanySettings, DashboardStats, Invoice, InvoiceStatus } from './types';
 import { calculateDashboardStats, generateNextDocumentNumber } from './utils/calculations';
 
@@ -64,18 +65,27 @@ export default function App() {
     try {
       setLoading(true);
       const [compData, clientData, invData, statsData] = await Promise.all([
-        api.getCompany(),
-        api.getClients(),
-        api.getInvoices(),
-        api.getStats()
+        api.getCompany().catch(() => initialCompanySettings),
+        api.getClients().catch(() => initialClients),
+        api.getInvoices().catch(() => initialInvoices),
+        api.getStats().catch(() => null)
       ]);
 
-      setCompany(compData);
-      setClients(clientData);
-      setInvoices(invData);
-      setStats(statsData);
+      const effectiveCompany = compData || initialCompanySettings;
+      const effectiveClients = clientData || initialClients;
+      const effectiveInvoices = invData || initialInvoices;
+      const effectiveStats = statsData || calculateDashboardStats(effectiveInvoices, effectiveClients);
+
+      setCompany(effectiveCompany);
+      setClients(effectiveClients);
+      setInvoices(effectiveInvoices);
+      setStats(effectiveStats);
     } catch (err) {
       console.error('Erreur chargement données:', err);
+      setCompany(initialCompanySettings);
+      setClients(initialClients);
+      setInvoices(initialInvoices);
+      setStats(calculateDashboardStats(initialInvoices, initialClients));
     } finally {
       setLoading(false);
     }
@@ -231,7 +241,7 @@ export default function App() {
     );
   }
 
-  if (loading || !company || !stats) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-4">
         <div className="h-12 w-12 rounded-xl bg-blue-600 animate-pulse flex items-center justify-center font-bold text-2xl mb-4">
@@ -241,6 +251,9 @@ export default function App() {
       </div>
     );
   }
+
+  const activeCompany = company || initialCompanySettings;
+  const activeStats = stats || calculateDashboardStats(invoices || initialInvoices, clients || initialClients);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
@@ -264,7 +277,7 @@ export default function App() {
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
         onLogout={handleLogout}
         currentUser={currentUser}
-        companyName={company.name}
+        companyName={activeCompany.name}
       />
 
       {/* Main Container */}
@@ -296,7 +309,7 @@ export default function App() {
             initialInvoice={editingInvoice}
             invoices={invoices}
             clients={clients}
-            company={company}
+            company={activeCompany}
             onSave={handleSaveInvoice}
             onCancel={() => {
               setIsInvoiceEditorOpen(false);
@@ -312,10 +325,10 @@ export default function App() {
             {/* Tab Views */}
             {activeTab === 'dashboard' && (
               <Dashboard
-                stats={stats}
+                stats={activeStats}
                 invoices={invoices}
                 clients={clients}
-                company={company}
+                company={activeCompany}
                 onNewInvoice={() => {
                   setEditingInvoice(null);
                   setIsInvoiceEditorOpen(true);
@@ -330,7 +343,7 @@ export default function App() {
               <InvoiceList
                 invoices={invoices}
                 clients={clients}
-                company={company}
+                company={activeCompany}
                 onNewInvoice={() => {
                   setEditingInvoice(null);
                   setIsInvoiceEditorOpen(true);
@@ -385,14 +398,14 @@ export default function App() {
       <CompanySettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        company={company}
+        company={activeCompany}
         onSave={handleSaveCompany}
       />
 
       <InvoiceDetailModal
         invoice={selectedInvoice}
         client={clients.find((c) => c.id === selectedInvoice?.clientId) || selectedInvoice?.client || null}
-        company={company}
+        company={activeCompany}
         onClose={() => setSelectedInvoice(null)}
         onEdit={(inv) => {
           setSelectedInvoice(null);
@@ -404,7 +417,10 @@ export default function App() {
         onCreateAvoir={handleCreateAvoir}
       />
 
-      
+      <PrismaCodeModal
+        isOpen={isPrismaModalOpen}
+        onClose={() => setIsPrismaModalOpen(false)}
+      />
 
       <PasswordChangeModal
         isOpen={isPasswordModalOpen}
