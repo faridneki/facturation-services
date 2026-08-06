@@ -53,6 +53,17 @@ export const authService = {
         role: 'Direction Générale'
       };
       localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+
+      // Sync user to backend PostgreSQL users table asynchronously
+      fetch('/api/auth/sync-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: username,
+          email: `${username}@facturation.com`
+        })
+      }).catch(err => console.warn('User sync background warning:', err));
+
       return { success: true };
     }
 

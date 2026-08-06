@@ -7,6 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { calculateDashboardStats } from './src/utils/calculations';
 import {
   seedCloudSQLIfEmpty,
+  getAllUsers,
   getCompanySettings,
   saveCompanySettings,
   getAllClients,
@@ -37,7 +38,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', provider: 'PostgreSQL Cloud SQL', time: new Date().toISOString() });
 });
 
-// User Sync API
+// User Sync & Query API
+app.get('/api/users', async (req, res) => {
+  try {
+    const list = await getAllUsers();
+    res.json(list);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to fetch users' });
+  }
+});
+
 app.post('/api/auth/sync-user', async (req, res) => {
   try {
     const { uid, email } = req.body;
@@ -174,6 +184,8 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+export default app;
+
 // Server boot with Vite middleware
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
@@ -190,9 +202,11 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running at http://localhost:${PORT} with PostgreSQL Cloud SQL backend`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running at http://localhost:${PORT} with PostgreSQL backend`);
+    });
+  }
 }
 
 startServer();
