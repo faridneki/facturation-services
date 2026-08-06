@@ -1,0 +1,139 @@
+// Prisma Schema for Factura - Application de Facturation (Fourniture et Pose - Algérie)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CompanyInfo {
+  id            String   @id @default(cuid())
+  // Identifiant unique (une seule ligne en base, id fixe comme "main")
+  
+  name          String   // Nom de l'entreprise
+  legalName     String?  // Raison sociale (si différente)
+  taxId         String?  // NIF (Numéro d'Identification Fiscale)
+  rc            String?  // Registre de commerce
+  ai            String?  // Article d'imposition
+  nis           String?  // NIS
+  art           String?  // Article d'imposition (si différent)
+  
+  address       String?  // Adresse complète
+  city          String?  // Ville
+  postalCode    String?  // Code postal
+  country       String?  @default("Algérie") // Pays (défaut "Algérie")
+  
+  phone         String?  // Téléphone
+  email         String?  // Email
+  website       String?  // Site web
+  
+  logoUrl       String?  // Chemin du logo (pour l'affichage)
+  logoBase64    String?  // Logo encodé en base64 (optionnel)
+  
+  footerText    String?  // Texte de pied de page (ex: "Merci de votre confiance")
+  legalTerms    String?  // Mentions légales ou conditions de paiement
+  
+  bankName      String?  // Banque
+  bankAccount   String?  // Compte bancaire
+  bankRib       String?  // RIB
+  createdBy     String?  // Stockera le nom ou le username de l'auteur
+  updatedBy     String?  // Stockera le nom ou le username du modificateur
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isActive      Boolean  @default(true)
+}
+
+model Client {
+  id           String   @id @default(cuid())
+  nom          String
+  email        String?
+  telephone    String
+  adresse      String?
+  ncBancaire   String?
+  nif          String?
+  rc           String?
+  ai           String?
+  nis          String?
+  creditMax    Float    @default(0)
+  creditActuel Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  factures     Invoice[]
+}
+
+enum DocumentType {
+  FACTURE
+  DEVIS
+  ACOMPTE
+  AVOIR
+}
+
+enum InvoiceStatus {
+  BROUILLON
+  ENVOYEE
+  PAYEE
+  EN_RETARD
+  ANNULEE
+}
+
+enum ServiceUnit {
+  M2
+  ML
+  M3
+  U
+  FORFAIT
+  HEURE
+  JOUR
+  ENSEMBLE
+  KG
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  number          String        @unique // e.g. FAC-2026-001 or DEV-2026-001
+  type            DocumentType  @default(FACTURE)
+  status          InvoiceStatus @default(BROUILLON)
+  
+  clientId        String
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  paymentDate     DateTime?
+  paymentMethod   String?       // Virement, Carte, Chèque, Espèces
+  
+  // Financial totals (calculated)
+  subtotalHT      Float
+  discountAmount  Float         @default(0)
+  taxAmount       Float
+  totalTTC        Float
+  depositAmount   Float         @default(0) // Acompte versé
+  
+  notes           String?
+  paymentTerms    String?
+  convertedFromId String?       // If converted from a Devis (Quote)
+  
+  items           InvoiceItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id              String      @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  description     String      // e.g. "Fourniture et pose de fenêtres PVC"
+  category        String?     // e.g. "Fourniture & Pose", "Pose seule"
+  unit            ServiceUnit @default(M2)
+  quantity        Float       @default(1.0)
+  unitPriceHT     Float
+  vatRate         Float       @default(9.0) // 9% par défaut (Algérie)
+  discountPercent Float       @default(0.0)
+  totalHT         Float
+  
+  sortOrder       Int         @default(0)
+}

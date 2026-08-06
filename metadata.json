@@ -1,0 +1,6 @@
+{
+  "name": "Factura - Facturation Services & Pose",
+  "description": "Application complète de facturation pour prestations de fourniture et pose, gestion de clients, génération de factures PDF et tableau de bord analytique des revenus.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

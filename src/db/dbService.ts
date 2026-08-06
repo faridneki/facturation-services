@@ -1,0 +1,465 @@
+import { db } from './index';
+import { clients, companyInfo, invoices, users } from './schema';
+import { eq, desc } from 'drizzle-orm';
+import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
+import { initialClients, initialCompanySettings, initialInvoices } from '../data/initialData';
+
+// Helper to seed Cloud SQL if database is completely empty
+export async function seedCloudSQLIfEmpty() {
+  try {
+    const existingCompany = await db.select().from(companyInfo).limit(1);
+    if (existingCompany.length === 0) {
+      console.log('Seeding initial company settings to Cloud SQL...');
+      await db.insert(companyInfo).values({
+        id: 'comp-1',
+        name: initialCompanySettings.name,
+        legalName: initialCompanySettings.legalName || '',
+        taxId: initialCompanySettings.taxId || '',
+        rc: initialCompanySettings.rc || '',
+        ai: initialCompanySettings.ai || '',
+        nis: initialCompanySettings.nis || '',
+        art: initialCompanySettings.art || '',
+        address: initialCompanySettings.address || '',
+        city: initialCompanySettings.city || '',
+        postalCode: initialCompanySettings.postalCode || '',
+        country: initialCompanySettings.country || 'Algérie',
+        phone: initialCompanySettings.phone || '',
+        email: initialCompanySettings.email || '',
+        website: initialCompanySettings.website || '',
+        logoUrl: initialCompanySettings.logoUrl || '',
+        logoBase64: initialCompanySettings.logoBase64 || '',
+        footerText: initialCompanySettings.footerText || '',
+        legalTerms: initialCompanySettings.legalTerms || '',
+        bankName: initialCompanySettings.bankName || '',
+        bankAccount: initialCompanySettings.bankAccount || '',
+        bankRib: initialCompanySettings.bankRib || '',
+      });
+    }
+
+    const existingClients = await db.select().from(clients).limit(1);
+    if (existingClients.length === 0) {
+      console.log('Seeding initial clients to Cloud SQL...');
+      for (const cli of initialClients) {
+        await db.insert(clients).values({
+          id: cli.id,
+          nom: cli.nom,
+          email: cli.email || '',
+          telephone: cli.telephone,
+          adresse: cli.adresse || '',
+          ncBancaire: cli.ncBancaire || '',
+          nif: cli.nif || '',
+          rc: cli.rc || '',
+          ai: cli.ai || '',
+          nis: cli.nis || '',
+          creditMax: cli.creditMax || 0,
+          creditActuel: cli.creditActuel || 0,
+        });
+      }
+    }
+
+    const existingInvoices = await db.select().from(invoices).limit(1);
+    if (existingInvoices.length === 0) {
+      console.log('Seeding initial invoices to Cloud SQL...');
+      for (const inv of initialInvoices) {
+        await db.insert(invoices).values({
+          id: inv.id,
+          number: inv.number,
+          type: inv.type,
+          status: inv.status,
+          clientId: inv.clientId,
+          issueDate: inv.issueDate,
+          dueDate: inv.dueDate,
+          paymentDate: inv.paymentDate || '',
+          paymentMethod: inv.paymentMethod || '',
+          itemsJson: JSON.stringify(inv.items || []),
+          subtotalHT: inv.subtotalHT || 0,
+          discountAmount: inv.discountAmount || 0,
+          taxAmount: inv.taxAmount || 0,
+          totalTTC: inv.totalTTC || 0,
+          depositAmount: inv.depositAmount || 0,
+          notes: inv.notes || '',
+          paymentTerms: inv.paymentTerms || '',
+          convertedFromId: inv.convertedFromId || '',
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error seeding Cloud SQL:', err);
+  }
+}
+
+// Company Info
+export async function getCompanySettings(uid?: string): Promise<CompanySettings> {
+  try {
+    const rows = uid 
+      ? await db.select().from(companyInfo).where(eq(companyInfo.userId, uid)).limit(1)
+      : await db.select().from(companyInfo).limit(1);
+    
+    if (rows.length === 0) {
+      // Fallback to first company in DB or initial data
+      const defaultRows = await db.select().from(companyInfo).limit(1);
+      if (defaultRows.length === 0) return initialCompanySettings;
+      return mapCompanyRow(defaultRows[0]);
+    }
+    return mapCompanyRow(rows[0]);
+  } catch (error) {
+    console.error('Failed to get company settings:', error);
+    throw new Error('Database query failed', { cause: error });
+  }
+}
+
+export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: string): Promise<CompanySettings> {
+  try {
+    const existing = await getCompanySettings(uid);
+    const idToUse = existing.id || `comp-${Date.now()}`;
+
+    await db.insert(companyInfo).values({
+      id: idToUse,
+      userId: uid || null,
+      name: data.name || existing.name || 'Mon Entreprise',
+      legalName: data.legalName ?? existing.legalName ?? '',
+      taxId: data.taxId ?? existing.taxId ?? '',
+      rc: data.rc ?? existing.rc ?? '',
+      ai: data.ai ?? existing.ai ?? '',
+      nis: data.nis ?? existing.nis ?? '',
+      art: data.art ?? existing.art ?? '',
+      address: data.address ?? existing.address ?? '',
+      city: data.city ?? existing.city ?? '',
+      postalCode: data.postalCode ?? existing.postalCode ?? '',
+      country: data.country ?? existing.country ?? 'Algérie',
+      phone: data.phone ?? existing.phone ?? '',
+      email: data.email ?? existing.email ?? '',
+      website: data.website ?? existing.website ?? '',
+      logoUrl: data.logoUrl ?? existing.logoUrl ?? '',
+      logoBase64: data.logoBase64 ?? existing.logoBase64 ?? '',
+      footerText: data.footerText ?? existing.footerText ?? '',
+      legalTerms: data.legalTerms ?? existing.legalTerms ?? '',
+      bankName: data.bankName ?? existing.bankName ?? '',
+      bankAccount: data.bankAccount ?? existing.bankAccount ?? '',
+      bankRib: data.bankRib ?? existing.bankRib ?? '',
+    }).onConflictDoUpdate({
+      target: companyInfo.id,
+      set: {
+        name: data.name ?? existing.name,
+        legalName: data.legalName ?? existing.legalName,
+        taxId: data.taxId ?? existing.taxId,
+        rc: data.rc ?? existing.rc,
+        ai: data.ai ?? existing.ai,
+        nis: data.nis ?? existing.nis,
+        art: data.art ?? existing.art,
+        address: data.address ?? existing.address,
+        city: data.city ?? existing.city,
+        postalCode: data.postalCode ?? existing.postalCode,
+        country: data.country ?? existing.country,
+        phone: data.phone ?? existing.phone,
+        email: data.email ?? existing.email,
+        website: data.website ?? existing.website,
+        logoUrl: data.logoUrl ?? existing.logoUrl,
+        logoBase64: data.logoBase64 ?? existing.logoBase64,
+        footerText: data.footerText ?? existing.footerText,
+        legalTerms: data.legalTerms ?? existing.legalTerms,
+        bankName: data.bankName ?? existing.bankName,
+        bankAccount: data.bankAccount ?? existing.bankAccount,
+        bankRib: data.bankRib ?? existing.bankRib,
+        updatedAt: new Date(),
+      }
+    });
+
+    return getCompanySettings(uid);
+  } catch (error) {
+    console.error('Failed to save company settings:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+// Clients
+export async function getAllClients(): Promise<Client[]> {
+  try {
+    const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+    return rows.map(mapClientRow);
+  } catch (error) {
+    console.error('Failed to get clients from Cloud SQL:', error);
+    throw new Error('Database query failed', { cause: error });
+  }
+}
+
+export async function createClient(data: Partial<Client>, uid?: string): Promise<Client> {
+  try {
+    const id = data.id || `cli-${Date.now().toString().substring(6)}`;
+    const newRow = await db.insert(clients).values({
+      id,
+      userId: uid || null,
+      nom: data.nom || data.name || 'Client',
+      email: data.email || '',
+      telephone: data.telephone || data.phone || '',
+      adresse: data.adresse || data.address || '',
+      ncBancaire: data.ncBancaire || '',
+      nif: data.nif || '',
+      rc: data.rc || '',
+      ai: data.ai || '',
+      nis: data.nis || '',
+      creditMax: data.creditMax || 0,
+      creditActuel: data.creditActuel || 0,
+    }).returning();
+
+    return mapClientRow(newRow[0]);
+  } catch (error) {
+    console.error('Failed to create client in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function updateClient(id: string, data: Partial<Client>): Promise<Client> {
+  try {
+    const updated = await db.update(clients).set({
+      nom: data.nom ?? data.name,
+      email: data.email,
+      telephone: data.telephone ?? data.phone,
+      adresse: data.adresse ?? data.address,
+      ncBancaire: data.ncBancaire,
+      nif: data.nif,
+      rc: data.rc,
+      ai: data.ai,
+      nis: data.nis,
+      creditMax: data.creditMax,
+      creditActuel: data.creditActuel,
+      updatedAt: new Date(),
+    }).where(eq(clients.id, id)).returning();
+
+    if (updated.length === 0) throw new Error('Client non trouvé');
+    return mapClientRow(updated[0]);
+  } catch (error) {
+    console.error('Failed to update client in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  try {
+    await db.delete(clients).where(eq(clients.id, id));
+  } catch (error) {
+    console.error('Failed to delete client in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+// Invoices
+export async function getAllInvoices(): Promise<Invoice[]> {
+  try {
+    const allClients = await getAllClients();
+    const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+    
+    return rows.map(row => {
+      const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
+      const clientObj = allClients.find(c => c.id === row.clientId);
+      return {
+        id: row.id,
+        number: row.number,
+        type: row.type as any,
+        status: row.status as any,
+        clientId: row.clientId,
+        client: clientObj,
+        issueDate: row.issueDate,
+        dueDate: row.dueDate,
+        paymentDate: row.paymentDate || undefined,
+        paymentMethod: row.paymentMethod as any,
+        items: parsedItems,
+        subtotalHT: row.subtotalHT,
+        discountAmount: row.discountAmount,
+        taxAmount: row.taxAmount,
+        totalTTC: row.totalTTC,
+        depositAmount: row.depositAmount || 0,
+        notes: row.notes || undefined,
+        paymentTerms: row.paymentTerms || undefined,
+        convertedFromId: row.convertedFromId || undefined,
+        createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch invoices from Cloud SQL:', error);
+    throw new Error('Database query failed', { cause: error });
+  }
+}
+
+export async function createInvoice(data: Partial<Invoice>, uid?: string): Promise<Invoice> {
+  try {
+    const id = data.id || `inv-${Date.now().toString().substring(6)}`;
+    const itemsJson = JSON.stringify(data.items || []);
+
+    const newRows = await db.insert(invoices).values({
+      id,
+      userId: uid || null,
+      number: data.number || 'FAC-001',
+      type: data.type || 'FACTURE',
+      status: data.status || 'BROUILLON',
+      clientId: data.clientId || '',
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      dueDate: data.dueDate || new Date().toISOString().split('T')[0],
+      paymentDate: data.paymentDate || null,
+      paymentMethod: data.paymentMethod || null,
+      itemsJson,
+      subtotalHT: data.subtotalHT || 0,
+      discountAmount: data.discountAmount || 0,
+      taxAmount: data.taxAmount || 0,
+      totalTTC: data.totalTTC || 0,
+      depositAmount: data.depositAmount || 0,
+      notes: data.notes || null,
+      paymentTerms: data.paymentTerms || null,
+      convertedFromId: data.convertedFromId || null,
+    }).returning();
+
+    const allInvoices = await getAllInvoices();
+    return allInvoices.find(i => i.id === id) || ({} as Invoice);
+  } catch (error) {
+    console.error('Failed to create invoice in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice> {
+  try {
+    const updatePayload: any = {
+      updatedAt: new Date(),
+    };
+    if (data.number) updatePayload.number = data.number;
+    if (data.type) updatePayload.type = data.type;
+    if (data.status) updatePayload.status = data.status;
+    if (data.clientId) updatePayload.clientId = data.clientId;
+    if (data.issueDate) updatePayload.issueDate = data.issueDate;
+    if (data.dueDate) updatePayload.dueDate = data.dueDate;
+    if (data.paymentDate !== undefined) updatePayload.paymentDate = data.paymentDate;
+    if (data.paymentMethod !== undefined) updatePayload.paymentMethod = data.paymentMethod;
+    if (data.items) updatePayload.itemsJson = JSON.stringify(data.items);
+    if (data.subtotalHT !== undefined) updatePayload.subtotalHT = data.subtotalHT;
+    if (data.discountAmount !== undefined) updatePayload.discountAmount = data.discountAmount;
+    if (data.taxAmount !== undefined) updatePayload.taxAmount = data.taxAmount;
+    if (data.totalTTC !== undefined) updatePayload.totalTTC = data.totalTTC;
+    if (data.depositAmount !== undefined) updatePayload.depositAmount = data.depositAmount;
+    if (data.notes !== undefined) updatePayload.notes = data.notes;
+    if (data.paymentTerms !== undefined) updatePayload.paymentTerms = data.paymentTerms;
+
+    await db.update(invoices).set(updatePayload).where(eq(invoices.id, id));
+
+    const allInvoices = await getAllInvoices();
+    return allInvoices.find(i => i.id === id) || ({} as Invoice);
+  } catch (error) {
+    console.error('Failed to update invoice in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function updateInvoiceStatus(id: string, status: string, paymentDate?: string, paymentMethod?: string): Promise<Invoice> {
+  try {
+    const updatePayload: any = { status, updatedAt: new Date() };
+    if (paymentDate) updatePayload.paymentDate = paymentDate;
+    if (paymentMethod) updatePayload.paymentMethod = paymentMethod;
+
+    await db.update(invoices).set(updatePayload).where(eq(invoices.id, id));
+
+    const allInvoices = await getAllInvoices();
+    return allInvoices.find(i => i.id === id) || ({} as Invoice);
+  } catch (error) {
+    console.error('Failed to update invoice status in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function convertQuoteToInvoice(id: string): Promise<{ quote: Invoice; invoice: Invoice }> {
+  try {
+    const allInvoices = await getAllInvoices();
+    const quote = allInvoices.find(i => i.id === id && i.type === 'DEVIS');
+    if (!quote) throw new Error('Devis introuvable ou déjà converti');
+
+    let maxSeq = 0;
+    const yearStr = String(new Date().getFullYear());
+    const facPattern = new RegExp(`^FAC-${yearStr}-(\\d+)$`, 'i');
+    allInvoices.forEach((i) => {
+      const match = i.number?.match(facPattern);
+      if (match && match[1]) {
+        const seq = parseInt(match[1], 10);
+        if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+      }
+    });
+    const nextNumber = `FAC-${yearStr}-${String(maxSeq + 1).padStart(3, '0')}`;
+
+    const newInvoice = await createInvoice({
+      ...quote,
+      id: `inv-${Date.now().toString().substring(6)}`,
+      number: nextNumber,
+      type: 'FACTURE',
+      status: 'ENVOYEE',
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      convertedFromId: quote.id,
+    });
+
+    const updatedNotes = (quote.notes || '') + ` [Converti en Facture ${nextNumber}]`;
+    await updateInvoice(quote.id, { notes: updatedNotes });
+
+    const freshQuote = (await getAllInvoices()).find(i => i.id === id)!;
+    return { quote: freshQuote, invoice: newInvoice };
+  } catch (error) {
+    console.error('Failed to convert quote in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+export async function deleteInvoice(id: string): Promise<void> {
+  try {
+    await db.delete(invoices).where(eq(invoices.id, id));
+  } catch (error) {
+    console.error('Failed to delete invoice in Cloud SQL:', error);
+    throw new Error('Database operation failed', { cause: error });
+  }
+}
+
+// Helpers
+function mapCompanyRow(row: any): CompanySettings {
+  return {
+    id: row.id,
+    name: row.name,
+    legalName: row.legalName || undefined,
+    taxId: row.taxId || undefined,
+    rc: row.rc || undefined,
+    ai: row.ai || undefined,
+    nis: row.nis || undefined,
+    art: row.art || undefined,
+    address: row.address || undefined,
+    city: row.city || undefined,
+    postalCode: row.postalCode || undefined,
+    country: row.country || undefined,
+    phone: row.phone || undefined,
+    email: row.email || undefined,
+    website: row.website || undefined,
+    logoUrl: row.logoUrl || undefined,
+    logoBase64: row.logoBase64 || undefined,
+    footerText: row.footerText || undefined,
+    legalTerms: row.legalTerms || undefined,
+    bankName: row.bankName || undefined,
+    bankAccount: row.bankAccount || undefined,
+    bankRib: row.bankRib || undefined,
+  };
+}
+
+function mapClientRow(row: any): Client {
+  return {
+    id: row.id,
+    nom: row.nom,
+    name: row.nom,
+    email: row.email || undefined,
+    telephone: row.telephone,
+    phone: row.telephone,
+    adresse: row.adresse || undefined,
+    address: row.adresse || undefined,
+    ncBancaire: row.ncBancaire || undefined,
+    nif: row.nif || undefined,
+    rc: row.rc || undefined,
+    ai: row.ai || undefined,
+    nis: row.nis || undefined,
+    creditMax: row.creditMax || 0,
+    creditActuel: row.creditActuel || 0,
+    createdAt: row.createdAt ? row.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    updatedAt: row.updatedAt ? row.updatedAt.toISOString().split('T')[0] : undefined,
+  };
+}
