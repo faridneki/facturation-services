@@ -20,6 +20,7 @@ export const createPool = () => {
 
     // Clean connection string for node-postgres compatibility
     let cleanConnectionString = rawConnectionString
+      .replace(/([?&])sslmode=[^&]*&?/g, '$1')
       .replace(/([?&])channel_binding=[^&]*&?/g, '$1')
       .replace(/\?$/, '')
       .replace(/&$/, '');

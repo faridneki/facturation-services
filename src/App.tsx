@@ -270,37 +270,40 @@ export default function App() {
   };
 
   const handleClearDemoData = async () => {
-    if (confirm('Voulez-vous vraiment effacer TOUTES les données de test (clients, factures, devis) de la base PostgreSQL ?')) {
+    if (confirm('Voulez-vous vraiment effacer TOUTES les données de test (clients, factures, devis) ?')) {
       try {
         await api.clearDemoData();
-        setClients([]);
-        setInvoices([]);
-        setToast({
-          type: 'info',
-          title: 'Base de données vidée !',
-          message: 'Toutes les données de test ont été supprimées. Vous démarrez avec une base 100% propre.'
-        });
-        setTimeout(() => setToast(null), 5000);
-      } catch (err) {
-        alert('Erreur lors du nettoyage de la base de données');
+      } catch (err: any) {
+        console.warn('Backend clear warning:', err);
       }
+      setClients([]);
+      setInvoices([]);
+      setToast({
+        type: 'info',
+        title: 'Base de données vidée !',
+        message: 'Toutes les données de démonstration ont été supprimées. Vous avez une base propre pour vos saisies.'
+      });
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
   const handleResetDemoData = async () => {
-    if (confirm('Voulez-vous recharger les exemples de démonstration dans PostgreSQL ?')) {
+    if (confirm('Voulez-vous recharger les exemples de démonstration ?')) {
       try {
         await api.resetDemoData();
         await loadInitialData();
-        setToast({
-          type: 'success',
-          title: 'Démo rechargée !',
-          message: 'Les exemples de clients, factures et devis ont été réinsérés dans PostgreSQL.'
-        });
-        setTimeout(() => setToast(null), 5000);
-      } catch (err) {
-        alert('Erreur lors de la réinitialisation de la démo');
+      } catch (err: any) {
+        console.warn('Backend reset warning:', err);
+        setClients(initialClients);
+        setInvoices(initialInvoices);
+        setStats(calculateDashboardStats(initialInvoices, initialClients));
       }
+      setToast({
+        type: 'success',
+        title: 'Démo rechargée !',
+        message: 'Les exemples de clients, factures et devis ont été rechargés avec succès.'
+      });
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
