@@ -2,7 +2,7 @@ import { db, pool } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
 import { eq, desc } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
-import { initialCompanySettings, initialClients, initialInvoices } from '../data/initialData';
+import { initialCompanySettings } from '../data/initialData';
 
 // Helper to seed Cloud SQL with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
@@ -99,29 +99,9 @@ export async function seedCloudSQLIfEmpty() {
       }).onConflictDoNothing();
     }
 
-    const flagResult = await pool.query(`SELECT value FROM system_flags WHERE key = 'seeded'`);
-    if (flagResult.rows.length === 0) {
-      console.log('First time setup: seeding initial demo data to Neon PostgreSQL...');
-      const existingCompany = await db.select().from(companyInfo).limit(1);
-      if (existingCompany.length === 0) {
-        await saveCompanySettings(initialCompanySettings);
-      }
-
-      const existingClientsList = await db.select().from(clients).limit(1);
-      if (existingClientsList.length === 0) {
-        for (const client of initialClients) {
-          await createClient(client);
-        }
-      }
-
-      const existingInvoicesList = await db.select().from(invoices).limit(1);
-      if (existingInvoicesList.length === 0) {
-        for (const inv of initialInvoices) {
-          await createInvoice(inv);
-        }
-      }
-
-      await pool.query(`INSERT INTO system_flags (key, value) VALUES ('seeded', 'true') ON CONFLICT DO NOTHING`);
+    const existingCompany = await db.select().from(companyInfo).limit(1);
+    if (existingCompany.length === 0) {
+      await saveCompanySettings(initialCompanySettings);
     }
   } catch (err) {
     console.error('Error initializing Cloud SQL tables:', err);
@@ -141,14 +121,8 @@ export async function clearAllData(): Promise<void> {
 export async function resetDemoData(): Promise<void> {
   try {
     await clearAllData();
-    for (const client of initialClients) {
-      await createClient(client);
-    }
-    for (const inv of initialInvoices) {
-      await createInvoice(inv);
-    }
   } catch (err) {
-    console.error('Failed to reset demo data:', err);
+    console.error('Failed to reset data:', err);
     throw err;
   }
 }

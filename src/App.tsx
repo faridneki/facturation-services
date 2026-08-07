@@ -15,7 +15,7 @@ import { api } from './services/api';
 import { authService, User } from './services/authService';
 import { Client, CompanySettings, DashboardStats, Invoice, InvoiceStatus } from './types';
 import { calculateDashboardStats, generateNextDocumentNumber } from './utils/calculations';
-import { initialCompanySettings, initialClients, initialInvoices } from './data/initialData';
+import { initialCompanySettings } from './data/initialData';
 
 export default function App() {
   // Auth state
@@ -84,9 +84,9 @@ export default function App() {
     } catch (err: any) {
       console.error('Erreur chargement base de données:', err);
       setCompany(initialCompanySettings);
-      setClients(initialClients);
-      setInvoices(initialInvoices);
-      setStats(calculateDashboardStats(initialInvoices, initialClients));
+      setClients([]);
+      setInvoices([]);
+      setStats(calculateDashboardStats([], []));
     } finally {
       setLoading(false);
     }
@@ -270,7 +270,7 @@ export default function App() {
   };
 
   const handleClearDemoData = async () => {
-    if (confirm('Voulez-vous vraiment effacer TOUTES les données de test (clients, factures, devis) ?')) {
+    if (confirm('Voulez-vous vraiment effacer TOUTES les données (clients, factures, devis) de la base de données ?')) {
       try {
         await api.clearDemoData();
       } catch (err: any) {
@@ -281,27 +281,7 @@ export default function App() {
       setToast({
         type: 'info',
         title: 'Base de données vidée !',
-        message: 'Toutes les données de démonstration ont été supprimées. Vous avez une base propre pour vos saisies.'
-      });
-      setTimeout(() => setToast(null), 5000);
-    }
-  };
-
-  const handleResetDemoData = async () => {
-    if (confirm('Voulez-vous recharger les exemples de démonstration ?')) {
-      try {
-        await api.resetDemoData();
-        await loadInitialData();
-      } catch (err: any) {
-        console.warn('Backend reset warning:', err);
-        setClients(initialClients);
-        setInvoices(initialInvoices);
-        setStats(calculateDashboardStats(initialInvoices, initialClients));
-      }
-      setToast({
-        type: 'success',
-        title: 'Démo rechargée !',
-        message: 'Les exemples de clients, factures et devis ont été rechargés avec succès.'
+        message: 'Toutes les données ont été supprimées de la base. Vous avez une base 100% propre pour vos saisies.'
       });
       setTimeout(() => setToast(null), 5000);
     }
@@ -352,7 +332,6 @@ export default function App() {
         onOpenPrismaModal={() => setIsPrismaModalOpen(true)}
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
         onClearDemoData={handleClearDemoData}
-        onResetDemoData={handleResetDemoData}
         onLogout={handleLogout}
         currentUser={currentUser}
         companyName={activeCompany.name}

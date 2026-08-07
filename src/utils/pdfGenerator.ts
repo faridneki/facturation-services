@@ -211,14 +211,15 @@ export function generateInvoicePDF(invoice: Invoice, client: Client, company: Co
     `${item.description}\n${item.category ? `[${item.category}]` : ''}`,
     item.unit || 'm²',
     formatNumber(Number(item.quantity) || 0, (Number(item.quantity) || 0) % 1 === 0 ? 0 : 2),
-    formatCurrency(item.unitPriceHT),    
+    formatCurrency(item.unitPriceHT),
+    item.discountPercent ? `${item.discountPercent}%` : '-',
     `${item.vatRate || 9}%`,
     formatCurrency(item.totalHT)
   ]);
 
   autoTable(doc, {
     startY: startY,
-    head: [['#', 'Prestation / Désignation (Fourniture & Pose)', 'Unité', 'Qté', 'P.U. HT', 'TVA', 'Total HT']],
+    head: [['#', 'Prestation / Désignation (Fourniture & Pose)', 'Unité', 'Qté', 'P.U. HT', 'Remise', 'TVA', 'Total HT']],
     body: tableData,
     theme: 'grid',
     headStyles: {
@@ -230,13 +231,13 @@ export function generateInvoicePDF(invoice: Invoice, client: Client, company: Co
     },
     columnStyles: {
       0: { halign: 'center', cellWidth: 8 },
-      1: { halign: 'left', cellWidth: 82 },
+      1: { halign: 'left', cellWidth: 68 },
       2: { halign: 'center', cellWidth: 16 },
       3: { halign: 'center', cellWidth: 14 },
       4: { halign: 'right', cellWidth: 24 },
-      
-      5: { halign: 'center', cellWidth: 12 },
-      6: { halign: 'right', cellWidth: 26 }
+      5: { halign: 'center', cellWidth: 14 },
+      6: { halign: 'center', cellWidth: 12 },
+      7: { halign: 'right', cellWidth: 26 }
     },
     styles: {
       fontSize: 8,

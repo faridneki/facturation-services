@@ -192,11 +192,11 @@ app.delete('/api/invoices/:id', async (req, res) => {
   }
 });
 
-// Demo Data Management Routes (Clear & Reset)
+// Data Management Routes (Clear)
 app.post('/api/demo/clear', async (req, res) => {
   try {
     await clearAllData();
-    res.json({ success: true, message: 'Toutes les données de démo ont été effacées.' });
+    res.json({ success: true, message: 'Toutes les données ont été effacées de la base.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Error clearing data' });
   }
@@ -204,10 +204,10 @@ app.post('/api/demo/clear', async (req, res) => {
 
 app.post('/api/demo/reset', async (req, res) => {
   try {
-    await resetDemoData();
-    res.json({ success: true, message: 'Données de démo réinitialisées avec succès.' });
+    await clearAllData();
+    res.json({ success: true, message: 'La base de données a été réinitialisée à zéro.' });
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Error resetting demo data' });
+    res.status(500).json({ error: err.message || 'Error resetting data' });
   }
 });
 
