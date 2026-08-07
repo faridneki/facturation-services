@@ -1,4 +1,4 @@
-import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, Trash2, Users } from 'lucide-react';
+import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
 import React from 'react';
 import { User } from '../services/authService';
 
@@ -11,6 +11,7 @@ interface NavbarProps {
   onOpenPrismaModal: () => void;
   onOpenPasswordModal: () => void;
   onClearDemoData: () => void;
+  onResetDemoData?: () => void;
   onLogout: () => void;
   currentUser: User | null;
   companyName: string;
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPrismaModal,
   onOpenPasswordModal,
   onClearDemoData,
+  onResetDemoData,
   onLogout,
   currentUser,
   companyName
@@ -91,6 +93,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
+            {onResetDemoData && (
+              <button
+                id="reset-db-btn"
+                onClick={onResetDemoData}
+                title="Charger des exemples de test dans la base Neon"
+                className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-blue-950/40 text-slate-300 hover:text-blue-300 border border-slate-700 hover:border-blue-800 rounded-lg transition-colors"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-blue-400" />
+                <span>Charger Exemples</span>
+              </button>
+            )}
+
             <button
               id="clear-db-btn"
               onClick={onClearDemoData}

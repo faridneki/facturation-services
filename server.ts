@@ -222,8 +222,8 @@ app.post('/api/demo/clear', async (req, res) => {
 
 app.post('/api/demo/reset', async (req, res) => {
   try {
-    await clearAllData();
-    res.json({ success: true, message: 'La base de données a été réinitialisée à zéro.' });
+    await resetDemoData();
+    res.json({ success: true, message: 'Les données de test ont été réinjectées dans la base Neon.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Error resetting data' });
   }

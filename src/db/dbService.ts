@@ -121,8 +121,62 @@ export async function clearAllData(): Promise<void> {
 export async function resetDemoData(): Promise<void> {
   try {
     await clearAllData();
+    const c1 = await createClient({
+      nom: 'SARL PROMO IMMO ALGER',
+      email: 'contact@promoimmo-alger.dz',
+      telephone: '0550 11 22 33',
+      adresse: '12 Boulevard Mohamed V, Alger Centre',
+      nif: '002016098765432',
+      rc: '16/00-9876543B20',
+      ai: '16098765432',
+      nis: '199816010098765',
+      creditMax: 5000000,
+      creditActuel: 1250000
+    });
+
+    const c2 = await createClient({
+      nom: 'EURL BATIMENT MODERN ORAN',
+      email: 'direction@batiment-oran.dz',
+      telephone: '041 33 44 55',
+      adresse: "Avenue Larbi Ben M'hidi, Oran",
+      nif: '003031011223344',
+      rc: '31/00-1122334B18',
+      ai: '31011223344',
+      nis: '200131010011223',
+      creditMax: 3000000,
+      creditActuel: 0
+    });
+
+    await createInvoice({
+      number: 'FAC-2026-001',
+      type: 'FACTURE',
+      status: 'PAYEE',
+      clientId: c1.id,
+      issueDate: '2026-05-15',
+      dueDate: '2026-06-15',
+      paymentDate: '2026-06-10',
+      paymentMethod: 'Virement',
+      items: [
+        {
+          id: 'item-101-1',
+          description: 'Fourniture et pose de fenêtres Aluminium double vitrage profilé thermique',
+          category: 'Fourniture & Pose',
+          unit: 'U',
+          quantity: 12,
+          unitPriceHT: 45000,
+          vatRate: 9,
+          discountPercent: 5,
+          totalHT: 513000
+        }
+      ],
+      subtotalHT: 513000,
+      discountAmount: 27000,
+      taxAmount: 43740,
+      totalTTC: 529740,
+      paymentTerms: 'Règlement sous 30 jours par virement bancaire.'
+    });
   } catch (err) {
-    console.error('Failed to reset data:', err);
+    console.error('Failed to reset demo data:', err);
     throw err;
   }
 }

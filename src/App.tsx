@@ -299,6 +299,24 @@ export default function App() {
     }
   };
 
+  const handleResetDemoData = async () => {
+    if (confirm('Voulez-vous charger des exemples de clients et factures dans la base Neon ?')) {
+      try {
+        await api.resetDemoData();
+        await loadInitialData();
+        setToast({
+          type: 'success',
+          title: 'Exemples chargés dans Neon !',
+          message: 'Des exemples de clients et factures ont été enregistrés directement dans la base de données.'
+        });
+        setTimeout(() => setToast(null), 5000);
+      } catch (err: any) {
+        console.error('Error loading demo data into Neon:', err);
+        alert('Erreur chargement exemples');
+      }
+    }
+  };
+
   // If not authenticated, render Login screen
   if (!isAuthenticated) {
     return (
@@ -344,6 +362,7 @@ export default function App() {
         onOpenPrismaModal={() => setIsPrismaModalOpen(true)}
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
         onClearDemoData={handleClearDemoData}
+        onResetDemoData={handleResetDemoData}
         onLogout={handleLogout}
         currentUser={currentUser}
         companyName={activeCompany.name}
