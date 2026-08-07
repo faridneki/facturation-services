@@ -3,10 +3,14 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
+  Database,
   Download,
   FileCheck,
   FileText,
+  HardDrive,
   Plus,
+  Server,
+  ShieldCheck,
   TrendingUp,
   Users,
   Wallet
@@ -35,6 +39,13 @@ interface DashboardProps {
   invoices: Invoice[];
   clients: Client[];
   company: CompanySettings;
+  dbHealth?: {
+    dbHost: string;
+    dbName: string;
+    dbStatus: string;
+    provider: string;
+    fullHost?: string;
+  } | null;
   onNewInvoice: () => void;
   onViewInvoice: (inv: Invoice) => void;
   onViewAllInvoices: () => void;
@@ -46,6 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   invoices = [],
   clients = [],
   company,
+  dbHealth,
   onNewInvoice,
   onViewInvoice,
   onViewAllInvoices,
@@ -100,6 +112,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <Plus className="h-4 w-4" />
             <span>Nouveau Devis / Facture</span>
           </button>
+        </div>
+      </div>
+
+      {/* Active Neon PostgreSQL Database Banner */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-slate-200 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl shrink-0">
+            <Database className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Base de données Neon Connectée
+              </span>
+              <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md font-mono border border-slate-700">
+                PostgreSQL Cloud (Neon)
+              </span>
+            </div>
+            <p className="text-xs font-mono text-slate-300 mt-1 break-all">
+              <span className="text-slate-500">URL Server:</span>{' '}
+              <strong className="text-emerald-300 font-semibold">
+                {dbHealth?.dbHost || 'ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech'}
+              </strong>
+              {' '}/ <span className="text-blue-300">{dbHealth?.dbName || 'facturation_db'}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800 self-stretch md:self-auto justify-between md:justify-start">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <ShieldCheck className="h-4 w-4 text-emerald-400" />
+            CRUD & Stockage en direct
+          </span>
+          <span className="text-slate-700">|</span>
+          <span className="text-slate-400 font-mono text-[11px]">{safeClients.length} clients • {safeInvoices.length} factures</span>
         </div>
       </div>
 

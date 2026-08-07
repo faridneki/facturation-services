@@ -28,6 +28,13 @@ export default function App() {
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [dbHealth, setDbHealth] = useState<{
+    dbHost: string;
+    dbName: string;
+    dbStatus: string;
+    provider: string;
+    fullHost?: string;
+  } | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -67,11 +74,16 @@ export default function App() {
       setLoading(true);
       setDbError(null);
 
-      const [compData, clientData, invData] = await Promise.all([
+      const [compData, clientData, invData, healthData] = await Promise.all([
         api.getCompany(),
         api.getClients(),
-        api.getInvoices()
+        api.getInvoices(),
+        api.getHealth().catch(() => null)
       ]);
+
+      if (healthData) {
+        setDbHealth(healthData);
+      }
 
       const loadedCompany = compData || initialCompanySettings;
       const loadedClients = Array.isArray(clientData) ? clientData : [];
@@ -421,6 +433,7 @@ export default function App() {
                 invoices={invoices}
                 clients={clients}
                 company={activeCompany}
+                dbHealth={dbHealth}
                 onNewInvoice={() => {
                   setEditingInvoice(null);
                   setIsInvoiceEditorOpen(true);

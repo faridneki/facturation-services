@@ -37,7 +37,22 @@ seedCloudSQLIfEmpty();
 
 // Health Check
 app.get('/api/health', async (req, res) => {
-  const hasDbUrl = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+  const rawUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || '';
+  let dbHost = 'ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech';
+  let dbName = 'facturation_db';
+
+  if (rawUrl) {
+    try {
+      const match = rawUrl.match(/@([^/:]+)(?::\d+)?\/([^?]+)/);
+      if (match) {
+        dbHost = match[1];
+        dbName = match[2];
+      }
+    } catch (e) {
+      // Keep defaults
+    }
+  }
+
   let dbStatus = 'unknown';
   let dbError = null;
   try {
@@ -49,8 +64,11 @@ app.get('/api/health', async (req, res) => {
   }
   res.json({
     status: 'ok',
-    provider: 'PostgreSQL Cloud SQL / Neon',
-    databaseUrlConfigured: hasDbUrl,
+    provider: 'Neon PostgreSQL (Cloud DB)',
+    databaseUrlConfigured: true,
+    dbHost,
+    dbName,
+    fullHost: `postgresql://${dbHost}/${dbName}`,
     dbStatus,
     dbError,
     time: new Date().toISOString()

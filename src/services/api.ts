@@ -64,6 +64,19 @@ export const api = {
       method: 'DELETE'
     }),
 
+  // Health & DB Info
+  getHealth: () => fetchJSON<{
+    status: string;
+    provider: string;
+    databaseUrlConfigured: boolean;
+    dbHost: string;
+    dbName: string;
+    fullHost: string;
+    dbStatus: string;
+    dbError: string | null;
+    time: string;
+  }>('/api/health'),
+
   // Stats
   getStats: () => fetchJSON<DashboardStats>('/api/stats'),
 
