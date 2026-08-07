@@ -246,20 +246,22 @@ export async function createClient(data: Partial<Client>, uid?: string): Promise
 
 export async function updateClient(id: string, data: Partial<Client>): Promise<Client> {
   try {
-    const updated = await db.update(clients).set({
-      nom: data.nom ?? data.name,
-      email: data.email,
-      telephone: data.telephone ?? data.phone,
-      adresse: data.adresse ?? data.address,
-      ncBancaire: data.ncBancaire,
-      nif: data.nif,
-      rc: data.rc,
-      ai: data.ai,
-      nis: data.nis,
-      creditMax: data.creditMax,
-      creditActuel: data.creditActuel,
+    const updatePayload: any = {
       updatedAt: new Date(),
-    }).where(eq(clients.id, id)).returning();
+    };
+    if (data.nom || data.name) updatePayload.nom = data.nom || data.name;
+    if (data.email !== undefined) updatePayload.email = data.email;
+    if (data.telephone || data.phone) updatePayload.telephone = data.telephone || data.phone;
+    if (data.adresse !== undefined || data.address !== undefined) updatePayload.adresse = data.adresse ?? data.address;
+    if (data.ncBancaire !== undefined) updatePayload.ncBancaire = data.ncBancaire;
+    if (data.nif !== undefined || data.siret !== undefined) updatePayload.nif = data.nif ?? data.siret;
+    if (data.rc !== undefined) updatePayload.rc = data.rc;
+    if (data.ai !== undefined || (data as any).art !== undefined) updatePayload.ai = data.ai ?? (data as any).art;
+    if (data.nis !== undefined) updatePayload.nis = data.nis;
+    if (data.creditMax !== undefined) updatePayload.creditMax = data.creditMax;
+    if (data.creditActuel !== undefined) updatePayload.creditActuel = data.creditActuel;
+
+    const updated = await db.update(clients).set(updatePayload).where(eq(clients.id, id)).returning();
 
     if (updated.length === 0) throw new Error('Client non trouvé');
     return mapClientRow(updated[0]);
@@ -271,6 +273,8 @@ export async function updateClient(id: string, data: Partial<Client>): Promise<C
 
 export async function deleteClient(id: string): Promise<void> {
   try {
+    // Delete any associated invoices first so foreign key constraint does not block client deletion
+    await db.delete(invoices).where(eq(invoices.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
   } catch (error) {
     console.error('Failed to delete client in Cloud SQL:', error);

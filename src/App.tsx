@@ -108,6 +108,13 @@ export default function App() {
     try {
       const result = await api.updateCompany(updated);
       setCompany(result);
+      setIsSettingsOpen(false);
+      setToast({
+        type: 'success',
+        title: 'Fiche Entreprise enregistrée !',
+        message: 'Les informations de votre entreprise ont été mises à jour dans la base de données.'
+      });
+      setTimeout(() => setToast(null), 5000);
     } catch (err) {
       alert('Erreur sauvegarde entreprise');
     }
@@ -118,12 +125,19 @@ export default function App() {
     try {
       if (editingClient) {
         const updated = await api.updateClient(editingClient.id, clientData);
-        setClients(clients.map((c) => (c.id === editingClient.id ? updated : c)));
+        setClients((prev) => prev.map((c) => (c.id === editingClient.id ? updated : c)));
       } else {
         const created = await api.createClient(clientData);
-        setClients([created, ...clients]);
+        setClients((prev) => [created, ...prev]);
       }
       setEditingClient(null);
+      setIsClientModalOpen(false);
+      setToast({
+        type: 'success',
+        title: 'Fiche Client enregistrée !',
+        message: 'Les coordonnées et identifiants fiscaux du client ont été enregistrés.'
+      });
+      setTimeout(() => setToast(null), 5000);
     } catch (err) {
       alert('Erreur sauvegarde client');
     }
@@ -132,7 +146,13 @@ export default function App() {
   const handleDeleteClient = async (id: string) => {
     try {
       await api.deleteClient(id);
-      setClients(clients.filter((c) => c.id !== id));
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      setToast({
+        type: 'info',
+        title: 'Client supprimé',
+        message: 'Le client a été supprimé de la base de données.'
+      });
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       alert('Erreur suppression client');
     }
@@ -165,8 +185,8 @@ export default function App() {
 
       setToast({
         type: 'success',
-        title: `${docTypeName} N° ${savedDoc.number} ${isNew ? 'enregistré' : 'mis à jour'} avec succès !`,
-        message: `Le document a été enregistré et vous avez été redirigé vers la liste des factures et devis.`
+        title: `${docTypeName} N° ${savedDoc.number || ''} ${isNew ? 'enregistré' : 'mis à jour'} avec succès !`,
+        message: `Le document a été enregistré dans la base de données PostgreSQL.`
       });
 
       setTimeout(() => setToast(null), 6000);
@@ -183,10 +203,16 @@ export default function App() {
   ) => {
     try {
       const updated = await api.updateInvoiceStatus(id, status, paymentDate, paymentMethod);
-      setInvoices(invoices.map((i) => (i.id === id ? updated : i)));
+      setInvoices((prev) => prev.map((i) => (i.id === id ? updated : i)));
       if (selectedInvoice && selectedInvoice.id === id) {
         setSelectedInvoice(updated);
       }
+      setToast({
+        type: 'success',
+        title: 'Statut mis à jour !',
+        message: `Le statut du document a été modifié en ${status}.`
+      });
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       alert('Erreur mise à jour statut');
     }
@@ -195,8 +221,13 @@ export default function App() {
   const handleConvertQuote = async (id: string) => {
     try {
       const res = await api.convertQuoteToInvoice(id);
-      setInvoices([res.invoice, ...invoices.map((i) => (i.id === id ? res.quote : i))]);
-      alert(`Devis converti en Facture N° ${res.invoice.number} avec succès !`);
+      setInvoices((prev) => [res.invoice, ...prev.map((i) => (i.id === id ? res.quote : i))]);
+      setToast({
+        type: 'success',
+        title: 'Devis converti !',
+        message: `Le devis a été converti en Facture N° ${res.invoice.number}.`
+      });
+      setTimeout(() => setToast(null), 5000);
     } catch (err) {
       alert('Erreur conversion du devis');
     }
@@ -225,8 +256,14 @@ export default function App() {
   const handleDeleteInvoice = async (id: string) => {
     try {
       await api.deleteInvoice(id);
-      setInvoices(invoices.filter((i) => i.id !== id));
+      setInvoices((prev) => prev.filter((i) => i.id !== id));
       if (selectedInvoice?.id === id) setSelectedInvoice(null);
+      setToast({
+        type: 'info',
+        title: 'Document supprimé',
+        message: 'La pièce a été supprimée de la base de données.'
+      });
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       alert('Erreur suppression document');
     }
