@@ -1,11 +1,89 @@
-import { db } from './index';
+import { db, pool } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
 import { eq, desc } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
 
-// Helper to seed Cloud SQL with admin user if empty
+// Helper to seed Cloud SQL with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
   try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        uid TEXT NOT NULL UNIQUE,
+        email TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS company_info (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(uid),
+        name TEXT NOT NULL,
+        legal_name TEXT,
+        tax_id TEXT,
+        rc TEXT,
+        ai TEXT,
+        nis TEXT,
+        art TEXT,
+        address TEXT,
+        city TEXT,
+        postal_code TEXT,
+        country TEXT,
+        phone TEXT,
+        email TEXT,
+        website TEXT,
+        logo_url TEXT,
+        logo_base64 TEXT,
+        footer_text TEXT,
+        legal_terms TEXT,
+        bank_name TEXT,
+        bank_account TEXT,
+        bank_rib TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS clients (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(uid),
+        nom TEXT NOT NULL,
+        email TEXT,
+        telephone TEXT NOT NULL,
+        adresse TEXT,
+        nc_bancaire TEXT,
+        nif TEXT,
+        rc TEXT,
+        ai TEXT,
+        nis TEXT,
+        credit_max DOUBLE PRECISION DEFAULT 0,
+        credit_actuel DOUBLE PRECISION DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS invoices (
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(uid),
+        number TEXT NOT NULL,
+        type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        client_id TEXT NOT NULL,
+        issue_date TEXT NOT NULL,
+        due_date TEXT NOT NULL,
+        payment_date TEXT,
+        payment_method TEXT,
+        items_json TEXT NOT NULL,
+        subtotal_ht DOUBLE PRECISION NOT NULL,
+        discount_amount DOUBLE PRECISION NOT NULL,
+        tax_amount DOUBLE PRECISION NOT NULL,
+        total_ttc DOUBLE PRECISION NOT NULL,
+        deposit_amount DOUBLE PRECISION DEFAULT 0,
+        notes TEXT,
+        payment_terms TEXT,
+        converted_from_id TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     const existingUsers = await db.select().from(users).limit(1);
     if (existingUsers.length === 0) {
       console.log('Seeding initial admin user to Cloud SQL...');
@@ -15,7 +93,7 @@ export async function seedCloudSQLIfEmpty() {
       }).onConflictDoNothing();
     }
   } catch (err) {
-    console.error('Error initializing Cloud SQL:', err);
+    console.error('Error initializing Cloud SQL tables:', err);
   }
 }
 
