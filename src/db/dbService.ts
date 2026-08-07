@@ -211,13 +211,10 @@ export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: 
 export async function getAllClients(): Promise<Client[]> {
   try {
     const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
-    if (rows.length === 0) {
-      return initialClients;
-    }
     return rows.map(mapClientRow);
   } catch (err) {
-    console.error('Error fetching clients from DB, using initialClients:', err);
-    return initialClients;
+    console.error('Error fetching clients from DB:', err);
+    throw err;
   }
 }
 
@@ -286,9 +283,6 @@ export async function getAllInvoices(): Promise<Invoice[]> {
   try {
     const allClients = await getAllClients();
     const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
-    if (rows.length === 0) {
-      return initialInvoices;
-    }
     
     return rows.map(row => {
       const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
@@ -318,8 +312,8 @@ export async function getAllInvoices(): Promise<Invoice[]> {
       };
     });
   } catch (err) {
-    console.error('Error fetching invoices from DB, using initialInvoices:', err);
-    return initialInvoices;
+    console.error('Error fetching invoices from DB:', err);
+    throw err;
   }
 }
 

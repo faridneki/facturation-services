@@ -74,8 +74,8 @@ export default function App() {
       ]);
 
       const loadedCompany = compData || initialCompanySettings;
-      const loadedClients = (clientData && clientData.length > 0) ? clientData : initialClients;
-      const loadedInvoices = (invData && invData.length > 0) ? invData : initialInvoices;
+      const loadedClients = Array.isArray(clientData) ? clientData : [];
+      const loadedInvoices = Array.isArray(invData) ? invData : [];
 
       setCompany(loadedCompany);
       setClients(loadedClients);
