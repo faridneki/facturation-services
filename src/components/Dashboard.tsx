@@ -43,16 +43,39 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   stats,
-  invoices,
-  clients,
+  invoices = [],
+  clients = [],
   company,
   onNewInvoice,
   onViewInvoice,
   onViewAllInvoices,
   onUpdateStatus
 }) => {
-  const overdueInvoices = invoices.filter(i => i.status === 'EN_RETARD');
-  const recentInvoices = invoices.slice(0, 5);
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
+  const safeStats = stats || {
+    monthlyRevenue: 0,
+    annualRevenue: 0,
+    paidAmount: 0,
+    pendingAmount: 0,
+    overdueAmount: 0,
+    draftCount: 0,
+    sentCount: 0,
+    paidCount: 0,
+    overdueCount: 0,
+    totalClients: 0,
+    quotesCount: 0,
+    quotesConversionRate: 0,
+    revenueByMonth: [],
+    statusBreakdown: [],
+    topServices: []
+  };
+
+  const overdueInvoices = safeInvoices.filter(i => i && i.status === 'EN_RETARD');
+  const recentInvoices = safeInvoices.slice(0, 5);
+  const statusBreakdown = safeStats.statusBreakdown || [];
+  const revenueByMonth = safeStats.revenueByMonth || [];
+  const topServices = safeStats.topServices || [];
 
   return (
     <div className="space-y-6">
@@ -92,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {overdueInvoices.length} facture(s) en retard de paiement
               </p>
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                Montant total impayé : <span className="font-bold text-amber-700 dark:text-amber-300">{formatCurrency(stats.overdueAmount)}</span>
+                Montant total impayé : <span className="font-bold text-amber-700 dark:text-amber-300">{formatCurrency(safeStats.overdueAmount)}</span>
               </p>
             </div>
           </div>
@@ -119,7 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(stats.monthlyRevenue)}
+              {formatCurrency(safeStats.monthlyRevenue)}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <TrendingUp className="h-3.5 w-3.5 text-emerald-500 inline" />
@@ -140,10 +163,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(stats.pendingAmount)}
+              {formatCurrency(safeStats.pendingAmount)}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {stats.sentCount} facture(s) émise(s) non réglée(s)
+              {safeStats.sentCount} facture(s) émise(s) non réglée(s)
             </p>
           </div>
         </div>
@@ -160,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(stats.annualRevenue)}
+              {formatCurrency(safeStats.annualRevenue)}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Total facturé & payé année 2026
@@ -180,10 +203,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats.totalClients} <span className="text-sm font-normal text-slate-500">Clients</span>
+              {safeStats.totalClients} <span className="text-sm font-normal text-slate-500">Clients</span>
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {stats.quotesCount} devis ({stats.quotesConversionRate}% acceptés)
+              {safeStats.quotesCount} devis ({safeStats.quotesConversionRate}% acceptés)
             </p>
           </div>
         </div>
@@ -206,7 +229,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.revenueByMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={revenueByMonth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorCa" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
@@ -249,11 +272,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="h-56 w-full my-auto flex items-center justify-center">
-            {stats.statusBreakdown.length > 0 ? (
+            {statusBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={stats.statusBreakdown}
+                    data={statusBreakdown}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -261,7 +284,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {stats.statusBreakdown.map((entry, index) => (
+                    {statusBreakdown.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -298,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.topServices} layout="vertical" margin={{ left: -10, right: 10, top: 0, bottom: 0 }}>
+              <BarChart data={topServices} layout="vertical" margin={{ left: -10, right: 10, top: 0, bottom: 0 }}>
                 <XAxis type="number" stroke="#94a3b8" fontSize={10} tickFormatter={(v) => `${v / 1000}k€`} />
                 <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={10} width={90} />
                 <Tooltip
@@ -326,7 +349,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               onClick={onViewAllInvoices}
               className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
             >
-              <span>Voir tout ({invoices.length})</span>
+              <span>Voir tout ({safeInvoices.length})</span>
               <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -345,7 +368,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {recentInvoices.map((inv) => {
-                  const client = clients.find(c => c.id === inv.clientId) || inv.client;
+                  const client = safeClients.find(c => c.id === inv.clientId) || inv.client;
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-3 font-mono font-semibold text-slate-900 dark:text-white">

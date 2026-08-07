@@ -263,12 +263,15 @@ export function calculateInvoiceTotals(items: InvoiceItem[], globalDiscountPerce
   };
 }
 
-export function calculateDashboardStats(invoices: Invoice[], clients: Client[]): DashboardStats {
+export function calculateDashboardStats(invoicesInput: Invoice[], clientsInput: Client[]): DashboardStats {
+  const invoices = Array.isArray(invoicesInput) ? invoicesInput : [];
+  const clients = Array.isArray(clientsInput) ? clientsInput : [];
+
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  const factures = invoices.filter(i => i.type === 'FACTURE');
-  const devis = invoices.filter(i => i.type === 'DEVIS');
+  const factures = invoices.filter(i => i && i.type === 'FACTURE');
+  const devis = invoices.filter(i => i && i.type === 'DEVIS');
 
   let monthlyRevenue = 0;
   let annualRevenue = 0;
@@ -284,19 +287,22 @@ export function calculateDashboardStats(invoices: Invoice[], clients: Client[]):
   const currentMonthStr = `${currentYear}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   factures.forEach(inv => {
-    const isThisYear = inv.issueDate.startsWith(String(currentYear));
-    const isThisMonth = inv.issueDate.startsWith(currentMonthStr);
+    if (!inv) return;
+    const issueDate = inv.issueDate || '';
+    const isThisYear = issueDate.startsWith(String(currentYear));
+    const isThisMonth = issueDate.startsWith(currentMonthStr);
+    const totalTTC = inv.totalTTC || 0;
 
     if (inv.status === 'PAYEE') {
-      paidAmount += inv.totalTTC;
+      paidAmount += totalTTC;
       paidCount++;
-      if (isThisYear) annualRevenue += inv.totalTTC;
-      if (isThisMonth) monthlyRevenue += inv.totalTTC;
+      if (isThisYear) annualRevenue += totalTTC;
+      if (isThisMonth) monthlyRevenue += totalTTC;
     } else if (inv.status === 'ENVOYEE') {
-      pendingAmount += inv.totalTTC;
+      pendingAmount += totalTTC;
       sentCount++;
     } else if (inv.status === 'EN_RETARD') {
-      overdueAmount += inv.totalTTC;
+      overdueAmount += totalTTC;
       overdueCount++;
     } else if (inv.status === 'BROUILLON') {
       draftCount++;
@@ -317,15 +323,21 @@ export function calculateDashboardStats(invoices: Invoice[], clients: Client[]):
     let devisTotal = 0;
 
     factures.forEach(inv => {
-      if (inv.issueDate.startsWith(mStr)) {
-        ca += inv.totalTTC;
-        if (inv.status === 'PAYEE') encaisse += inv.totalTTC;
+      if (!inv) return;
+      const issueDate = inv.issueDate || '';
+      const totalTTC = inv.totalTTC || 0;
+      if (issueDate.startsWith(mStr)) {
+        ca += totalTTC;
+        if (inv.status === 'PAYEE') encaisse += totalTTC;
       }
     });
 
     devis.forEach(dev => {
-      if (dev.issueDate.startsWith(mStr)) {
-        devisTotal += dev.totalTTC;
+      if (!dev) return;
+      const issueDate = dev.issueDate || '';
+      const totalTTC = dev.totalTTC || 0;
+      if (issueDate.startsWith(mStr)) {
+        devisTotal += totalTTC;
       }
     });
 
@@ -348,9 +360,12 @@ export function calculateDashboardStats(invoices: Invoice[], clients: Client[]):
   // Top services breakdown by revenue
   const serviceMap: Record<string, number> = {};
   factures.forEach(inv => {
-    inv.items.forEach(item => {
+    if (!inv) return;
+    const items = Array.isArray(inv.items) ? inv.items : [];
+    items.forEach(item => {
+      if (!item) return;
       const category = item.category || 'Fourniture & Pose';
-      serviceMap[category] = (serviceMap[category] || 0) + item.totalHT;
+      serviceMap[category] = (serviceMap[category] || 0) + (item.totalHT || 0);
     });
   });
 
@@ -359,7 +374,7 @@ export function calculateDashboardStats(invoices: Invoice[], clients: Client[]):
     .sort((a, b) => b.revenue - a.revenue);
 
   // Quotes conversion rate
-  const acceptedQuotes = devis.filter(d => d.status === 'PAYEE' || d.convertedFromId || d.status === 'ENVOYEE').length;
+  const acceptedQuotes = devis.filter(d => d && (d.status === 'PAYEE' || d.convertedFromId || d.status === 'ENVOYEE')).length;
   const quotesConversionRate = devis.length > 0 ? Math.round((acceptedQuotes / devis.length) * 100) : 0;
 
   return {

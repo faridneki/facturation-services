@@ -86,16 +86,7 @@ export default function App() {
       setCompany({ id: 'comp-1', name: 'Mon Entreprise', country: 'Algérie' });
       setClients([]);
       setInvoices([]);
-      setStats({
-        totalRevenue: 0,
-        paidRevenue: 0,
-        pendingRevenue: 0,
-        overdueRevenue: 0,
-        quotesCount: 0,
-        invoicesCount: 0,
-        clientsCount: 0,
-        recentInvoices: []
-      });
+      setStats(calculateDashboardStats([], []));
     } finally {
       setLoading(false);
     }
