@@ -19,7 +19,9 @@ import {
   updateInvoice,
   updateInvoiceStatus,
   convertQuoteToInvoice,
-  deleteInvoice
+  deleteInvoice,
+  clearAllData,
+  resetDemoData
 } from './src/db/dbService';
 import { getOrCreateUser } from './src/db/users';
 
@@ -187,6 +189,25 @@ app.delete('/api/invoices/:id', async (req, res) => {
     res.json({ success: true, id: req.params.id });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Error deleting invoice' });
+  }
+});
+
+// Demo Data Management Routes (Clear & Reset)
+app.post('/api/demo/clear', async (req, res) => {
+  try {
+    await clearAllData();
+    res.json({ success: true, message: 'Toutes les données de démo ont été effacées.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error clearing data' });
+  }
+});
+
+app.post('/api/demo/reset', async (req, res) => {
+  try {
+    await resetDemoData();
+    res.json({ success: true, message: 'Données de démo réinitialisées avec succès.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error resetting demo data' });
   }
 });
 

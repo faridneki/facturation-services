@@ -269,6 +269,41 @@ export default function App() {
     }
   };
 
+  const handleClearDemoData = async () => {
+    if (confirm('Voulez-vous vraiment effacer TOUTES les données de test (clients, factures, devis) de la base PostgreSQL ?')) {
+      try {
+        await api.clearDemoData();
+        setClients([]);
+        setInvoices([]);
+        setToast({
+          type: 'info',
+          title: 'Base de données vidée !',
+          message: 'Toutes les données de test ont été supprimées. Vous démarrez avec une base 100% propre.'
+        });
+        setTimeout(() => setToast(null), 5000);
+      } catch (err) {
+        alert('Erreur lors du nettoyage de la base de données');
+      }
+    }
+  };
+
+  const handleResetDemoData = async () => {
+    if (confirm('Voulez-vous recharger les exemples de démonstration dans PostgreSQL ?')) {
+      try {
+        await api.resetDemoData();
+        await loadInitialData();
+        setToast({
+          type: 'success',
+          title: 'Démo rechargée !',
+          message: 'Les exemples de clients, factures et devis ont été réinsérés dans PostgreSQL.'
+        });
+        setTimeout(() => setToast(null), 5000);
+      } catch (err) {
+        alert('Erreur lors de la réinitialisation de la démo');
+      }
+    }
+  };
+
   // If not authenticated, render Login screen
   if (!isAuthenticated) {
     return (
@@ -313,6 +348,8 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenPrismaModal={() => setIsPrismaModalOpen(true)}
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
+        onClearDemoData={handleClearDemoData}
+        onResetDemoData={handleResetDemoData}
         onLogout={handleLogout}
         currentUser={currentUser}
         companyName={activeCompany.name}

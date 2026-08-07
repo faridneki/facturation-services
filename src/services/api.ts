@@ -65,6 +65,10 @@ export const api = {
     }),
 
   // Stats
-  getStats: () => fetchJSON<DashboardStats>('/api/stats')
+  getStats: () => fetchJSON<DashboardStats>('/api/stats'),
+
+  // Demo Data Management
+  clearDemoData: () => fetchJSON<{ success: boolean; message: string }>('/api/demo/clear', { method: 'POST' }),
+  resetDemoData: () => fetchJSON<{ success: boolean; message: string }>('/api/demo/reset', { method: 'POST' })
 };
 

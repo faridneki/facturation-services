@@ -1,5 +1,5 @@
-import { Building2, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, Shield, Users } from 'lucide-react';
-import React from 'react';
+import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
+import React, { useState } from 'react';
 import { User } from '../services/authService';
 
 interface NavbarProps {
@@ -10,6 +10,8 @@ interface NavbarProps {
   onOpenSettings: () => void;
   onOpenPrismaModal: () => void;
   onOpenPasswordModal: () => void;
+  onClearDemoData: () => void;
+  onResetDemoData: () => void;
   onLogout: () => void;
   currentUser: User | null;
   companyName: string;
@@ -23,10 +25,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenPrismaModal,
   onOpenPasswordModal,
+  onClearDemoData,
+  onResetDemoData,
   onLogout,
   currentUser,
   companyName
 }) => {
+  const [isDemoMenuOpen, setIsDemoMenuOpen] = useState(false);
+
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -88,7 +94,56 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
-            
+            {/* Demo Data Management Dropdown */}
+            <div className="relative">
+              <button
+                id="demo-data-menu-btn"
+                onClick={() => setIsDemoMenuOpen(!isDemoMenuOpen)}
+                title="Gestion des données de test / démonstration"
+                className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors"
+              >
+                <Database className="h-3.5 w-3.5 text-purple-400" />
+                <span>Données Démo</span>
+              </button>
+
+              {isDemoMenuOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl py-2 z-50 text-xs">
+                  <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/80 mb-1">
+                    Gestion Base de Données
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsDemoMenuOpen(false);
+                      onClearDemoData();
+                    }}
+                    className="w-full text-left px-3 py-2 text-rose-400 hover:bg-rose-950/40 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Vider les données de démo</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDemoMenuOpen(false);
+                      onResetDemoData();
+                    }}
+                    className="w-full text-left px-3 py-2 text-blue-400 hover:bg-blue-950/40 flex items-center gap-2 transition-colors"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>Recharger la démo</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              id="prisma-schema-btn"
+              onClick={onOpenPrismaModal}
+              title="Afficher le schéma Prisma & Base de données"
+              className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors"
+            >
+              <Code className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Code Prisma</span>
+            </button>
 
             <button
               id="security-settings-btn"

@@ -83,6 +83,11 @@ export async function seedCloudSQLIfEmpty() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS system_flags (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
     `);
 
     const existingUsers = await db.select().from(users).limit(1);
@@ -94,26 +99,57 @@ export async function seedCloudSQLIfEmpty() {
       }).onConflictDoNothing();
     }
 
-    const existingCompany = await db.select().from(companyInfo).limit(1);
-    if (existingCompany.length === 0) {
-      await saveCompanySettings(initialCompanySettings);
-    }
-
-    const existingClientsList = await db.select().from(clients).limit(1);
-    if (existingClientsList.length === 0) {
-      for (const client of initialClients) {
-        await createClient(client);
+    const flagResult = await pool.query(`SELECT value FROM system_flags WHERE key = 'seeded'`);
+    if (flagResult.rows.length === 0) {
+      console.log('First time setup: seeding initial demo data to Neon PostgreSQL...');
+      const existingCompany = await db.select().from(companyInfo).limit(1);
+      if (existingCompany.length === 0) {
+        await saveCompanySettings(initialCompanySettings);
       }
-    }
 
-    const existingInvoicesList = await db.select().from(invoices).limit(1);
-    if (existingInvoicesList.length === 0) {
-      for (const inv of initialInvoices) {
-        await createInvoice(inv);
+      const existingClientsList = await db.select().from(clients).limit(1);
+      if (existingClientsList.length === 0) {
+        for (const client of initialClients) {
+          await createClient(client);
+        }
       }
+
+      const existingInvoicesList = await db.select().from(invoices).limit(1);
+      if (existingInvoicesList.length === 0) {
+        for (const inv of initialInvoices) {
+          await createInvoice(inv);
+        }
+      }
+
+      await pool.query(`INSERT INTO system_flags (key, value) VALUES ('seeded', 'true') ON CONFLICT DO NOTHING`);
     }
   } catch (err) {
     console.error('Error initializing Cloud SQL tables:', err);
+  }
+}
+
+export async function clearAllData(): Promise<void> {
+  try {
+    await db.delete(invoices);
+    await db.delete(clients);
+  } catch (err) {
+    console.error('Failed to clear data:', err);
+    throw err;
+  }
+}
+
+export async function resetDemoData(): Promise<void> {
+  try {
+    await clearAllData();
+    for (const client of initialClients) {
+      await createClient(client);
+    }
+    for (const inv of initialInvoices) {
+      await createInvoice(inv);
+    }
+  } catch (err) {
+    console.error('Failed to reset demo data:', err);
+    throw err;
   }
 }
 
