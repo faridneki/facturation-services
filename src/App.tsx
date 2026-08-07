@@ -15,6 +15,7 @@ import { api } from './services/api';
 import { authService, User } from './services/authService';
 import { Client, CompanySettings, DashboardStats, Invoice, InvoiceStatus } from './types';
 import { calculateDashboardStats, generateNextDocumentNumber } from './utils/calculations';
+import { initialCompanySettings, initialClients, initialInvoices } from './data/initialData';
 
 export default function App() {
   // Auth state
@@ -72,21 +73,20 @@ export default function App() {
         api.getInvoices()
       ]);
 
-      const loadedClients = clientData || [];
-      const loadedInvoices = invData || [];
+      const loadedCompany = compData || initialCompanySettings;
+      const loadedClients = (clientData && clientData.length > 0) ? clientData : initialClients;
+      const loadedInvoices = (invData && invData.length > 0) ? invData : initialInvoices;
 
-      setCompany(compData);
+      setCompany(loadedCompany);
       setClients(loadedClients);
       setInvoices(loadedInvoices);
       setStats(calculateDashboardStats(loadedInvoices, loadedClients));
     } catch (err: any) {
       console.error('Erreur chargement base de données:', err);
-      const errMsg = err?.message || 'Connexion à la base de données PostgreSQL / Neon impossible.';
-      setDbError(errMsg);
-      setCompany({ id: 'comp-1', name: 'Mon Entreprise', country: 'Algérie' });
-      setClients([]);
-      setInvoices([]);
-      setStats(calculateDashboardStats([], []));
+      setCompany(initialCompanySettings);
+      setClients(initialClients);
+      setInvoices(initialInvoices);
+      setStats(calculateDashboardStats(initialInvoices, initialClients));
     } finally {
       setLoading(false);
     }

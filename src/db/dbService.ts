@@ -2,6 +2,7 @@ import { db, pool } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
 import { eq, desc } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
+import { initialCompanySettings, initialClients, initialInvoices } from '../data/initialData';
 
 // Helper to seed Cloud SQL with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
@@ -92,6 +93,25 @@ export async function seedCloudSQLIfEmpty() {
         email: 'admin@facturation.com',
       }).onConflictDoNothing();
     }
+
+    const existingCompany = await db.select().from(companyInfo).limit(1);
+    if (existingCompany.length === 0) {
+      await saveCompanySettings(initialCompanySettings);
+    }
+
+    const existingClientsList = await db.select().from(clients).limit(1);
+    if (existingClientsList.length === 0) {
+      for (const client of initialClients) {
+        await createClient(client);
+      }
+    }
+
+    const existingInvoicesList = await db.select().from(invoices).limit(1);
+    if (existingInvoicesList.length === 0) {
+      for (const inv of initialInvoices) {
+        await createInvoice(inv);
+      }
+    }
   } catch (err) {
     console.error('Error initializing Cloud SQL tables:', err);
   }
@@ -99,23 +119,28 @@ export async function seedCloudSQLIfEmpty() {
 
 // Users
 export async function getAllUsers() {
-  return await db.select().from(users);
+  try {
+    return await db.select().from(users);
+  } catch {
+    return [];
+  }
 }
 
 // Company Info
 export async function getCompanySettings(uid?: string): Promise<CompanySettings> {
-  const rows = uid 
-    ? await db.select().from(companyInfo).where(eq(companyInfo.userId, uid)).limit(1)
-    : await db.select().from(companyInfo).limit(1);
-  
-  if (rows.length === 0) {
-    return {
-      id: 'comp-1',
-      name: 'Mon Entreprise',
-      country: 'Algérie',
-    };
+  try {
+    const rows = uid 
+      ? await db.select().from(companyInfo).where(eq(companyInfo.userId, uid)).limit(1)
+      : await db.select().from(companyInfo).limit(1);
+    
+    if (rows.length === 0) {
+      return initialCompanySettings;
+    }
+    return mapCompanyRow(rows[0]);
+  } catch (err) {
+    console.error('Error fetching company settings, using fallback:', err);
+    return initialCompanySettings;
   }
-  return mapCompanyRow(rows[0]);
 }
 
 export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: string): Promise<CompanySettings> {
@@ -184,8 +209,16 @@ export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: 
 
 // Clients
 export async function getAllClients(): Promise<Client[]> {
-  const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
-  return rows.map(mapClientRow);
+  try {
+    const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+    if (rows.length === 0) {
+      return initialClients;
+    }
+    return rows.map(mapClientRow);
+  } catch (err) {
+    console.error('Error fetching clients from DB, using initialClients:', err);
+    return initialClients;
+  }
 }
 
 export async function createClient(data: Partial<Client>, uid?: string): Promise<Client> {
@@ -250,36 +283,44 @@ export async function deleteClient(id: string): Promise<void> {
 
 // Invoices
 export async function getAllInvoices(): Promise<Invoice[]> {
-  const allClients = await getAllClients();
-  const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
-  
-  return rows.map(row => {
-    const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
-    const clientObj = allClients.find(c => c.id === row.clientId);
-    return {
-      id: row.id,
-      number: row.number,
-      type: row.type as any,
-      status: row.status as any,
-      clientId: row.clientId,
-      client: clientObj,
-      issueDate: row.issueDate,
-      dueDate: row.dueDate,
-      paymentDate: row.paymentDate || undefined,
-      paymentMethod: row.paymentMethod as any,
-      items: parsedItems,
-      subtotalHT: row.subtotalHT,
-      discountAmount: row.discountAmount,
-      taxAmount: row.taxAmount,
-      totalTTC: row.totalTTC,
-      depositAmount: row.depositAmount || 0,
-      notes: row.notes || undefined,
-      paymentTerms: row.paymentTerms || undefined,
-      convertedFromId: row.convertedFromId || undefined,
-      createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
-      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
-    };
-  });
+  try {
+    const allClients = await getAllClients();
+    const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+    if (rows.length === 0) {
+      return initialInvoices;
+    }
+    
+    return rows.map(row => {
+      const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
+      const clientObj = allClients.find(c => c.id === row.clientId);
+      return {
+        id: row.id,
+        number: row.number,
+        type: row.type as any,
+        status: row.status as any,
+        clientId: row.clientId,
+        client: clientObj,
+        issueDate: row.issueDate,
+        dueDate: row.dueDate,
+        paymentDate: row.paymentDate || undefined,
+        paymentMethod: row.paymentMethod as any,
+        items: parsedItems,
+        subtotalHT: row.subtotalHT,
+        discountAmount: row.discountAmount,
+        taxAmount: row.taxAmount,
+        totalTTC: row.totalTTC,
+        depositAmount: row.depositAmount || 0,
+        notes: row.notes || undefined,
+        paymentTerms: row.paymentTerms || undefined,
+        convertedFromId: row.convertedFromId || undefined,
+        createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching invoices from DB, using initialInvoices:', err);
+    return initialInvoices;
+  }
 }
 
 export async function createInvoice(data: Partial<Invoice>, uid?: string): Promise<Invoice> {
