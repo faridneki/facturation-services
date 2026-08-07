@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { ClientFormModal } from './components/ClientFormModal';
 import { ClientList } from './components/ClientList';
 import { CompanySettingsModal } from './components/CompanySettingsModal';
@@ -13,7 +13,6 @@ import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { PrismaCodeModal } from './components/PrismaCodeModal';
 import { api } from './services/api';
 import { authService, User } from './services/authService';
-import { initialClients, initialCompanySettings, initialInvoices } from './data/initialData';
 import { Client, CompanySettings, DashboardStats, Invoice, InvoiceStatus } from './types';
 import { calculateDashboardStats, generateNextDocumentNumber } from './utils/calculations';
 
@@ -30,6 +29,7 @@ export default function App() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     type: 'success' | 'error' | 'info';
     title: string;
@@ -64,28 +64,38 @@ export default function App() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [compData, clientData, invData, statsData] = await Promise.all([
-        api.getCompany().catch(() => initialCompanySettings),
-        api.getClients().catch(() => initialClients),
-        api.getInvoices().catch(() => initialInvoices),
-        api.getStats().catch(() => null)
+      setDbError(null);
+
+      const [compData, clientData, invData] = await Promise.all([
+        api.getCompany(),
+        api.getClients(),
+        api.getInvoices()
       ]);
 
-      const effectiveCompany = compData || initialCompanySettings;
-      const effectiveClients = clientData || initialClients;
-      const effectiveInvoices = invData || initialInvoices;
-      const effectiveStats = statsData || calculateDashboardStats(effectiveInvoices, effectiveClients);
+      const loadedClients = clientData || [];
+      const loadedInvoices = invData || [];
 
-      setCompany(effectiveCompany);
-      setClients(effectiveClients);
-      setInvoices(effectiveInvoices);
-      setStats(effectiveStats);
-    } catch (err) {
-      console.error('Erreur chargement données:', err);
-      setCompany(initialCompanySettings);
-      setClients(initialClients);
-      setInvoices(initialInvoices);
-      setStats(calculateDashboardStats(initialInvoices, initialClients));
+      setCompany(compData);
+      setClients(loadedClients);
+      setInvoices(loadedInvoices);
+      setStats(calculateDashboardStats(loadedInvoices, loadedClients));
+    } catch (err: any) {
+      console.error('Erreur chargement base de données:', err);
+      const errMsg = err?.message || 'Connexion à la base de données PostgreSQL / Neon impossible.';
+      setDbError(errMsg);
+      setCompany({ id: 'comp-1', name: 'Mon Entreprise', country: 'Algérie' });
+      setClients([]);
+      setInvoices([]);
+      setStats({
+        totalRevenue: 0,
+        paidRevenue: 0,
+        pendingRevenue: 0,
+        overdueRevenue: 0,
+        quotesCount: 0,
+        invoicesCount: 0,
+        clientsCount: 0,
+        recentInvoices: []
+      });
     } finally {
       setLoading(false);
     }
@@ -252,8 +262,8 @@ export default function App() {
     );
   }
 
-  const activeCompany = company || initialCompanySettings;
-  const activeStats = stats || calculateDashboardStats(invoices || initialInvoices, clients || initialClients);
+  const activeCompany = company || { id: 'comp-1', name: 'Mon Entreprise', country: 'Algérie' };
+  const activeStats = stats || calculateDashboardStats(invoices, clients);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-500 selection:text-white">
@@ -282,6 +292,41 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Database Error Alert Banner */}
+        {dbError && (
+          <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-950/90 border-2 border-amber-500/60 rounded-2xl text-slate-900 dark:text-white shadow-xl flex items-start justify-between animate-fade-in transition-all">
+            <div className="flex items-start space-x-3.5">
+              <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-sm shrink-0 mt-0.5">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-amber-950 dark:text-amber-100 flex items-center gap-2">
+                  Base de données non disponible / Erreur de connexion
+                </h3>
+                <p className="text-xs text-amber-900 dark:text-amber-200 mt-1 font-mono bg-amber-100/80 dark:bg-amber-900/50 p-2 rounded-lg border border-amber-300 dark:border-amber-800">
+                  {dbError}
+                </p>
+                <p className="text-xs text-amber-800 dark:text-amber-300 mt-2">
+                  Aucune donnée de démonstration n'est affichée. Veuillez vérifier que la variable d'environnement <code className="font-semibold underline">DATABASE_URL</code> est accessible par l'application déployée.
+                </p>
+                <button
+                  onClick={loadInitialData}
+                  className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-xs font-semibold rounded-xl text-white bg-amber-600 hover:bg-amber-700 active:bg-amber-800 focus:outline-none transition-colors shadow-sm cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                  Réessayer la connexion
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setDbError(null)}
+              className="p-1.5 hover:bg-amber-200/50 dark:hover:bg-amber-900 rounded-lg text-amber-800 dark:text-amber-300 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {/* Toast Notification Banner */}
         {toast && (
           <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/90 border-2 border-emerald-500/60 rounded-2xl text-slate-900 dark:text-white shadow-xl flex items-center justify-between animate-fade-in transition-all">

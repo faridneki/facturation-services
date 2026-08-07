@@ -2,9 +2,8 @@ import { db } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
 import { eq, desc } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
-import { initialClients, initialCompanySettings, initialInvoices } from '../data/initialData';
 
-// Helper to seed Cloud SQL if database is completely empty
+// Helper to seed Cloud SQL with admin user if empty
 export async function seedCloudSQLIfEmpty() {
   try {
     const existingUsers = await db.select().from(users).limit(1);
@@ -15,116 +14,30 @@ export async function seedCloudSQLIfEmpty() {
         email: 'admin@facturation.com',
       }).onConflictDoNothing();
     }
-
-    const existingCompany = await db.select().from(companyInfo).limit(1);
-    if (existingCompany.length === 0) {
-      console.log('Seeding initial company settings to Cloud SQL...');
-      await db.insert(companyInfo).values({
-        id: 'comp-1',
-        name: initialCompanySettings.name,
-        legalName: initialCompanySettings.legalName || '',
-        taxId: initialCompanySettings.taxId || '',
-        rc: initialCompanySettings.rc || '',
-        ai: initialCompanySettings.ai || '',
-        nis: initialCompanySettings.nis || '',
-        art: initialCompanySettings.art || '',
-        address: initialCompanySettings.address || '',
-        city: initialCompanySettings.city || '',
-        postalCode: initialCompanySettings.postalCode || '',
-        country: initialCompanySettings.country || 'Algérie',
-        phone: initialCompanySettings.phone || '',
-        email: initialCompanySettings.email || '',
-        website: initialCompanySettings.website || '',
-        logoUrl: initialCompanySettings.logoUrl || '',
-        logoBase64: initialCompanySettings.logoBase64 || '',
-        footerText: initialCompanySettings.footerText || '',
-        legalTerms: initialCompanySettings.legalTerms || '',
-        bankName: initialCompanySettings.bankName || '',
-        bankAccount: initialCompanySettings.bankAccount || '',
-        bankRib: initialCompanySettings.bankRib || '',
-      });
-    }
-
-    const existingClients = await db.select().from(clients).limit(1);
-    if (existingClients.length === 0) {
-      console.log('Seeding initial clients to Cloud SQL...');
-      for (const cli of initialClients) {
-        await db.insert(clients).values({
-          id: cli.id,
-          nom: cli.nom,
-          email: cli.email || '',
-          telephone: cli.telephone,
-          adresse: cli.adresse || '',
-          ncBancaire: cli.ncBancaire || '',
-          nif: cli.nif || '',
-          rc: cli.rc || '',
-          ai: cli.ai || '',
-          nis: cli.nis || '',
-          creditMax: cli.creditMax || 0,
-          creditActuel: cli.creditActuel || 0,
-        });
-      }
-    }
-
-    const existingInvoices = await db.select().from(invoices).limit(1);
-    if (existingInvoices.length === 0) {
-      console.log('Seeding initial invoices to Cloud SQL...');
-      for (const inv of initialInvoices) {
-        await db.insert(invoices).values({
-          id: inv.id,
-          number: inv.number,
-          type: inv.type,
-          status: inv.status,
-          clientId: inv.clientId,
-          issueDate: inv.issueDate,
-          dueDate: inv.dueDate,
-          paymentDate: inv.paymentDate || '',
-          paymentMethod: inv.paymentMethod || '',
-          itemsJson: JSON.stringify(inv.items || []),
-          subtotalHT: inv.subtotalHT || 0,
-          discountAmount: inv.discountAmount || 0,
-          taxAmount: inv.taxAmount || 0,
-          totalTTC: inv.totalTTC || 0,
-          depositAmount: inv.depositAmount || 0,
-          notes: inv.notes || '',
-          paymentTerms: inv.paymentTerms || '',
-          convertedFromId: inv.convertedFromId || '',
-        });
-      }
-    }
   } catch (err) {
-    console.error('Error seeding Cloud SQL:', err);
+    console.error('Error initializing Cloud SQL:', err);
   }
 }
 
 // Users
 export async function getAllUsers() {
-  try {
-    return await db.select().from(users);
-  } catch (error) {
-    console.error('Failed to get users:', error);
-    return [];
-  }
+  return await db.select().from(users);
 }
 
 // Company Info
 export async function getCompanySettings(uid?: string): Promise<CompanySettings> {
-  try {
-    const rows = uid 
-      ? await db.select().from(companyInfo).where(eq(companyInfo.userId, uid)).limit(1)
-      : await db.select().from(companyInfo).limit(1);
-    
-    if (rows.length === 0) {
-      // Fallback to first company in DB or initial data
-      const defaultRows = await db.select().from(companyInfo).limit(1);
-      if (defaultRows.length === 0) return initialCompanySettings;
-      return mapCompanyRow(defaultRows[0]);
-    }
-    return mapCompanyRow(rows[0]);
-  } catch (error) {
-    console.error('Failed to get company settings:', error);
-    return initialCompanySettings;
+  const rows = uid 
+    ? await db.select().from(companyInfo).where(eq(companyInfo.userId, uid)).limit(1)
+    : await db.select().from(companyInfo).limit(1);
+  
+  if (rows.length === 0) {
+    return {
+      id: 'comp-1',
+      name: 'Mon Entreprise',
+      country: 'Algérie',
+    };
   }
+  return mapCompanyRow(rows[0]);
 }
 
 export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: string): Promise<CompanySettings> {
@@ -193,13 +106,8 @@ export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: 
 
 // Clients
 export async function getAllClients(): Promise<Client[]> {
-  try {
-    const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
-    return rows.map(mapClientRow);
-  } catch (error) {
-    console.error('Failed to get clients from Cloud SQL:', error);
-    return initialClients;
-  }
+  const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+  return rows.map(mapClientRow);
 }
 
 export async function createClient(data: Partial<Client>, uid?: string): Promise<Client> {
@@ -264,41 +172,36 @@ export async function deleteClient(id: string): Promise<void> {
 
 // Invoices
 export async function getAllInvoices(): Promise<Invoice[]> {
-  try {
-    const allClients = await getAllClients();
-    const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
-    
-    return rows.map(row => {
-      const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
-      const clientObj = allClients.find(c => c.id === row.clientId);
-      return {
-        id: row.id,
-        number: row.number,
-        type: row.type as any,
-        status: row.status as any,
-        clientId: row.clientId,
-        client: clientObj,
-        issueDate: row.issueDate,
-        dueDate: row.dueDate,
-        paymentDate: row.paymentDate || undefined,
-        paymentMethod: row.paymentMethod as any,
-        items: parsedItems,
-        subtotalHT: row.subtotalHT,
-        discountAmount: row.discountAmount,
-        taxAmount: row.taxAmount,
-        totalTTC: row.totalTTC,
-        depositAmount: row.depositAmount || 0,
-        notes: row.notes || undefined,
-        paymentTerms: row.paymentTerms || undefined,
-        convertedFromId: row.convertedFromId || undefined,
-        createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
-        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
-      };
-    });
-  } catch (error) {
-    console.error('Failed to fetch invoices from Cloud SQL:', error);
-    return initialInvoices;
-  }
+  const allClients = await getAllClients();
+  const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt));
+  
+  return rows.map(row => {
+    const parsedItems: InvoiceItem[] = JSON.parse(row.itemsJson || '[]');
+    const clientObj = allClients.find(c => c.id === row.clientId);
+    return {
+      id: row.id,
+      number: row.number,
+      type: row.type as any,
+      status: row.status as any,
+      clientId: row.clientId,
+      client: clientObj,
+      issueDate: row.issueDate,
+      dueDate: row.dueDate,
+      paymentDate: row.paymentDate || undefined,
+      paymentMethod: row.paymentMethod as any,
+      items: parsedItems,
+      subtotalHT: row.subtotalHT,
+      discountAmount: row.discountAmount,
+      taxAmount: row.taxAmount,
+      totalTTC: row.totalTTC,
+      depositAmount: row.depositAmount || 0,
+      notes: row.notes || undefined,
+      paymentTerms: row.paymentTerms || undefined,
+      convertedFromId: row.convertedFromId || undefined,
+      createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+    };
+  });
 }
 
 export async function createInvoice(data: Partial<Invoice>, uid?: string): Promise<Invoice> {
