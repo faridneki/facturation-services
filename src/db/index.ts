@@ -14,7 +14,9 @@ declare global {
 
 export const createPool = () => {
   if (!global._postgresPool) {
-    const rawConnectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || DEFAULT_NEON_URL;
+    const envUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+    const isValidEnvUrl = envUrl && envUrl.includes('@') && !envUrl.includes('user:password');
+    const rawConnectionString = isValidEnvUrl ? envUrl! : DEFAULT_NEON_URL;
 
     // Clean connection string for node-postgres compatibility
     let cleanConnectionString = rawConnectionString

@@ -24,7 +24,7 @@ import {
 import { getOrCreateUser } from './src/db/users';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -34,8 +34,25 @@ seedCloudSQLIfEmpty();
 // --- API ROUTES ---
 
 // Health Check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', provider: 'PostgreSQL Cloud SQL', time: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  const hasDbUrl = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+  let dbStatus = 'unknown';
+  let dbError = null;
+  try {
+    await getAllUsers();
+    dbStatus = 'connected';
+  } catch (err: any) {
+    dbStatus = 'error';
+    dbError = err.message || String(err);
+  }
+  res.json({
+    status: 'ok',
+    provider: 'PostgreSQL Cloud SQL / Neon',
+    databaseUrlConfigured: hasDbUrl,
+    dbStatus,
+    dbError,
+    time: new Date().toISOString()
+  });
 });
 
 // User Sync & Query API
