@@ -156,11 +156,11 @@ model FactureItem {
               Commandes d'initialisation dans votre terminal VS Code :
             </span>
             <pre className="font-mono text-[11px] text-slate-300 space-y-1">
-              <div><span className="text-slate-500"># 1. Installer Prisma CLI</span></div>
-              <div>npm install prisma @prisma/client --save-dev</div>
-              <div className="pt-1"><span className="text-slate-500"># 2. Générer les fichiers de migration et la base SQLite local</span></div>
-              <div>npx prisma migrate dev --name init</div>
-              <div className="pt-1"><span className="text-slate-500"># 3. Explorer la base de données visuellement</span></div>
+              <div><span className="text-slate-500"># 1. Configurer l'URL de votre base Neon dans votre fichier .env</span></div>
+              <div className="text-emerald-300">DATABASE_URL="postgresql://neondb_owner:...@ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech/facturation_db?sslmode=require"</div>
+              <div className="pt-1"><span className="text-slate-500"># 2. Synchroniser le schéma Prisma avec Neon (notez l'accès à facturation_db)</span></div>
+              <div>npx prisma db push</div>
+              <div className="pt-1"><span className="text-slate-500"># 3. Ouvrir Prisma Studio sur la base Neon</span></div>
               <div>npx prisma studio</div>
             </pre>
           </div>
