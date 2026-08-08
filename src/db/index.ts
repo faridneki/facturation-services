@@ -19,7 +19,12 @@ console.log('Initializing Neon PostgreSQL HTTP driver for serverless database co
 
 export const sql = neon(connectionString);
 export const pool = {
-  query: (text: string, params?: any[]) => sql.query(text, params)
+  query: async (text: string, params?: any[]) => {
+    if (params && params.length > 0) {
+      return await (sql as any)(text, params);
+    }
+    return await (sql as any)(text);
+  }
 };
 export const db = drizzle(sql, { schema });
 
