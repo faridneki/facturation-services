@@ -9,6 +9,7 @@ import {
   FileText,
   HardDrive,
   Plus,
+  RotateCcw,
   Server,
   ShieldCheck,
   TrendingUp,
@@ -50,6 +51,7 @@ interface DashboardProps {
   onViewInvoice: (inv: Invoice) => void;
   onViewAllInvoices: () => void;
   onUpdateStatus: (id: string, status: string) => void;
+  onResetDemoData?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -61,7 +63,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNewInvoice,
   onViewInvoice,
   onViewAllInvoices,
-  onUpdateStatus
+  onUpdateStatus,
+  onResetDemoData
 }) => {
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
   const safeClients = Array.isArray(clients) ? clients : [];
@@ -144,13 +147,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800 self-stretch md:self-auto justify-between md:justify-start">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 bg-slate-950/70 px-3 py-2 rounded-xl border border-slate-800 self-stretch md:self-auto justify-between md:justify-start">
           <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
             <ShieldCheck className="h-4 w-4 text-emerald-400" />
             CRUD & Stockage en direct
           </span>
           <span className="text-slate-700">|</span>
-          <span className="text-slate-400 font-mono text-[11px]">{safeClients.length} clients • {safeInvoices.length} factures</span>
+          <span className="text-slate-300 font-mono text-[11px] font-bold">{safeClients.length} clients • {safeInvoices.length} factures</span>
+
+          {onResetDemoData && (
+            <button
+              onClick={onResetDemoData}
+              title="Charger des clients et factures de test dans Neon"
+              className="ml-auto flex items-center space-x-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition-all shadow-sm active:scale-95"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Charger Exemples</span>
+            </button>
+          )}
         </div>
       </div>
 

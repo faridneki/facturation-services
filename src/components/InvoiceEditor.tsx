@@ -104,6 +104,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     initialInvoice?.paymentTerms || company.paymentTerms || company.legalTerms || 'Paiement à 30 jours par virement ou chèque bancaire.'
   );
   const [depositAmount, setDepositAmount] = useState<number>(initialInvoice?.depositAmount || 0);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Line items state
   const [items, setItems] = useState<InvoiceItem[]>(
@@ -179,9 +180,10 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
   const handleRemoveItem = (id: string) => {
     if (items.length <= 1) {
-      alert('Une facture doit contenir au moins une prestation.');
+      setValidationError('Une facture doit contenir au moins une prestation.');
       return;
     }
+    setValidationError(null);
     setItems(items.filter((item) => item.id !== id));
   };
 
@@ -189,14 +191,16 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     e.preventDefault();
 
     if (!clientId) {
-      alert('Veuillez sélectionner un client.');
+      setValidationError('Veuillez sélectionner un client.');
       return;
     }
 
     if (items.some((i) => !i.description.trim())) {
-      alert('Veuillez remplir la désignation de chaque prestation.');
+      setValidationError('Veuillez remplir la désignation de chaque prestation.');
       return;
     }
+
+    setValidationError(null);
 
     const invoiceData: Partial<Invoice> = {
       ...(initialInvoice || {}),
@@ -299,6 +303,18 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
 
       {/* Editor Main Form */}
       <form onSubmit={handleFormSubmit} className="space-y-6">
+        {validationError && (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-500 font-bold text-xs flex items-center justify-between">
+            <span>{validationError}</span>
+            <button
+              type="button"
+              onClick={() => setValidationError(null)}
+              className="text-rose-400 hover:text-rose-300 ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {/* Document Meta Section */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">

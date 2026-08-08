@@ -18,6 +18,7 @@ import {
 import React, { useState } from 'react';
 import { Client, Invoice } from '../types';
 import { formatCurrency, formatDateFR, getClientAddress, getClientDisplayName, getClientPhone } from '../utils/calculations';
+import { ConfirmationModal } from './ConfirmationModal';
 
 interface ClientListProps {
   clients: Client[];
@@ -40,6 +41,7 @@ export const ClientList: React.FC<ClientListProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
 
   const filteredClients = clients.filter(c => {
     const displayName = getClientDisplayName(c).toLowerCase();
@@ -144,11 +146,7 @@ export const ClientList: React.FC<ClientListProps> = ({
                       <Edit2 className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Voulez-vous supprimer le client ${displayName} ?`)) {
-                          onDeleteClient(client.id);
-                        }
-                      }}
+                      onClick={() => setDeletingClient(client)}
                       title="Supprimer le client"
                       className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
@@ -272,6 +270,22 @@ export const ClientList: React.FC<ClientListProps> = ({
           );
         })}
       </div>
+
+      <ConfirmationModal
+        isOpen={!!deletingClient}
+        title="Supprimer le Client"
+        message={`Êtes-vous sûr de vouloir supprimer le client "${deletingClient ? getClientDisplayName(deletingClient) : ''}" ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+        onConfirm={() => {
+          if (deletingClient) {
+            onDeleteClient(deletingClient.id);
+            setDeletingClient(null);
+          }
+        }}
+        onCancel={() => setDeletingClient(null)}
+      />
     </div>
   );
 };

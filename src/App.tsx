@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, RefreshCw, X } from 'lucide-react';
 import { ClientFormModal } from './components/ClientFormModal';
 import { ClientList } from './components/ClientList';
 import { CompanySettingsModal } from './components/CompanySettingsModal';
+import { ConfirmationModal } from './components/ConfirmationModal';
 import { Dashboard } from './components/Dashboard';
 import { InvoiceDetailModal } from './components/InvoiceDetailModal';
 import { InvoiceEditor } from './components/InvoiceEditor';
@@ -56,6 +57,14 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrismaModalOpen, setIsPrismaModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  } | null>(null);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -281,40 +290,61 @@ export default function App() {
     }
   };
 
-  const handleClearDemoData = async () => {
-    if (confirm('Voulez-vous vraiment effacer TOUTES les données (clients, factures, devis) de la base de données ?')) {
-      try {
-        await api.clearDemoData();
-      } catch (err: any) {
-        console.warn('Backend clear warning:', err);
-      }
-      setClients([]);
-      setInvoices([]);
-      setToast({
-        type: 'info',
-        title: 'Base de données vidée !',
-        message: 'Toutes les données ont été supprimées de la base. Vous avez une base 100% propre pour vos saisies.'
-      });
-      setTimeout(() => setToast(null), 5000);
-    }
-  };
-
-  const handleResetDemoData = async () => {
-    if (confirm('Voulez-vous charger des exemples de clients et factures dans la base Neon ?')) {
-      try {
-        await api.resetDemoData();
-        await loadInitialData();
+  const handleClearDemoData = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Vider la Base de Données',
+      message: 'Voulez-vous vraiment effacer TOUTES les données (clients, factures, devis) de la base Neon ? Cette opération réinitialise vos données.',
+      confirmText: 'Effacer Tout',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await api.clearDemoData();
+        } catch (err: any) {
+          console.warn('Backend clear warning:', err);
+        }
+        setClients([]);
+        setInvoices([]);
         setToast({
-          type: 'success',
-          title: 'Exemples chargés dans Neon !',
-          message: 'Des exemples de clients et factures ont été enregistrés directement dans la base de données.'
+          type: 'info',
+          title: 'Base de données vidée !',
+          message: 'Toutes les données ont été supprimées de la base. Vous avez une base 100% propre pour vos saisies.'
         });
         setTimeout(() => setToast(null), 5000);
-      } catch (err: any) {
-        console.error('Error loading demo data into Neon:', err);
-        alert('Erreur chargement exemples');
       }
-    }
+    });
+  };
+
+  const handleResetDemoData = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Charger les Exemples de Test',
+      message: 'Voulez-vous charger des exemples réels de clients et factures directement dans votre base PostgreSQL Neon ?',
+      confirmText: 'Charger les Exemples',
+      variant: 'info',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await api.resetDemoData();
+          await loadInitialData();
+          setToast({
+            type: 'success',
+            title: 'Exemples chargés dans Neon !',
+            message: 'Des exemples de clients et factures ont été enregistrés directement dans la base de données.'
+          });
+          setTimeout(() => setToast(null), 5000);
+        } catch (err: any) {
+          console.error('Error loading demo data into Neon:', err);
+          setToast({
+            type: 'error',
+            title: 'Erreur Chargement',
+            message: 'Impossible de charger les exemples dans la base de données.'
+          });
+          setTimeout(() => setToast(null), 5000);
+        }
+      }
+    });
   };
 
   // If not authenticated, render Login screen
@@ -460,6 +490,7 @@ export default function App() {
                 onViewInvoice={(inv) => setSelectedInvoice(inv)}
                 onViewAllInvoices={() => setActiveTab('invoices')}
                 onUpdateStatus={(id, status) => handleUpdateStatus(id, status as InvoiceStatus)}
+                onResetDemoData={handleResetDemoData}
               />
             )}
 
@@ -549,6 +580,18 @@ export default function App() {
       <PasswordChangeModal
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={!!confirmModal?.isOpen}
+        title={confirmModal?.title || ''}
+        message={confirmModal?.message || ''}
+        confirmText={confirmModal?.confirmText}
+        variant={confirmModal?.variant}
+        onConfirm={() => {
+          if (confirmModal?.onConfirm) confirmModal.onConfirm();
+        }}
+        onCancel={() => setConfirmModal(null)}
       />
     </div>
   );

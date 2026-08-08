@@ -20,6 +20,7 @@ import React, { useState } from 'react';
 import { Client, CompanySettings, DocumentType, Invoice, InvoiceStatus } from '../types';
 import { formatCurrency, formatDateFR } from '../utils/calculations';
 import { downloadInvoicePDF } from '../utils/pdfGenerator';
+import { ConfirmationModal } from './ConfirmationModal';
 import { StatusBadge } from './Dashboard';
 
 interface InvoiceListProps {
@@ -51,6 +52,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
   const [typeFilter, setTypeFilter] = useState<DocumentType | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'ALL'>('ALL');
   const [clientFilter, setClientFilter] = useState<string>('ALL');
+  const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
 
   const filteredInvoices = invoices.filter((inv) => {
     const client = clients.find((c) => c.id === inv.clientId) || inv.client;
@@ -268,11 +270,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
                     </button>
 
                     <button
-                      onClick={() => {
-                        if (confirm(`Voulez-vous supprimer la pièce N° ${inv.number} ?`)) {
-                          onDeleteInvoice(inv.id);
-                        }
-                      }}
+                      onClick={() => setDeletingInvoice(inv)}
                       title="Supprimer"
                       className="p-2 text-rose-600 bg-slate-100 dark:bg-slate-800 rounded-xl"
                     >
@@ -423,11 +421,7 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
 
                         {/* Delete */}
                         <button
-                          onClick={() => {
-                            if (confirm(`Voulez-vous supprimer la pièce N° ${inv.number} ?`)) {
-                              onDeleteInvoice(inv.id);
-                            }
-                          }}
+                          onClick={() => setDeletingInvoice(inv)}
                           title="Supprimer"
                           className="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
@@ -442,6 +436,22 @@ export const InvoiceList: React.FC<InvoiceListProps> = ({
           </table>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={!!deletingInvoice}
+        title="Supprimer la Pièce"
+        message={`Êtes-vous sûr de vouloir supprimer le document N° "${deletingInvoice?.number || ''}" ? Cette action est irréversible.`}
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        variant="danger"
+        onConfirm={() => {
+          if (deletingInvoice) {
+            onDeleteInvoice(deletingInvoice.id);
+            setDeletingInvoice(null);
+          }
+        }}
+        onCancel={() => setDeletingInvoice(null)}
+      />
     </div>
   );
 };

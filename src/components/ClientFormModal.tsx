@@ -31,12 +31,15 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
     creditActuel: initialClient?.creditActuel ?? 0
   });
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nom || !formData.telephone) {
-      alert('Veuillez renseigner le nom et le numéro de téléphone du client.');
+      setErrorMsg('Veuillez renseigner le nom et le numéro de téléphone du client.');
       return;
     }
+    setErrorMsg(null);
 
     onSave({
       ...formData,
@@ -70,6 +73,12 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1 text-sm">
+          {errorMsg && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-500 text-xs font-semibold">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Main Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>

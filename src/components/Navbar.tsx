@@ -98,10 +98,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id="reset-db-btn"
                 onClick={onResetDemoData}
                 title="Charger des exemples de test dans la base Neon"
-                className="hidden md:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-blue-950/40 text-slate-300 hover:text-blue-300 border border-slate-700 hover:border-blue-800 rounded-lg transition-colors"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 border border-blue-800 rounded-lg transition-all active:scale-95"
               >
                 <RotateCcw className="h-3.5 w-3.5 text-blue-400" />
-                <span>Charger Exemples</span>
+                <span className="inline">Charger Exemples</span>
               </button>
             )}
 
@@ -112,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800 rounded-lg transition-colors"
             >
               <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-              <span>Vider la base</span>
+              <span>Vider</span>
             </button>
 
             <button
