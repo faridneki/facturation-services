@@ -38,6 +38,14 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
+  
+  // Normalize Vercel serverless URL rewrites
+  if (req.url.includes('/api/index.ts')) {
+    req.url = req.url.replace('/api/index.ts', '/api');
+  }
+  if (!req.url.startsWith('/api') && !req.url.startsWith('/assets') && !req.url.startsWith('/@') && !req.url.includes('.')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
   next();
 });
 
