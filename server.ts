@@ -54,8 +54,13 @@ function ensureDbInitialized() {
 
 // Ensure database tables exist before processing API calls
 app.use('/api', async (req, res, next) => {
-  await ensureDbInitialized();
-  next();
+  try {
+    await ensureDbInitialized();
+    next();
+  } catch (err) {
+    console.error('API Init Middleware Error:', err);
+    res.status(500).json({ error: 'Database initialization error', details: String(err) });
+  }
 });
 
 // --- API ROUTES ---

@@ -1,22 +1,22 @@
-import { db, pool } from './index';
+import { db } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql as drizzleSql } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
 import { initialCompanySettings } from '../data/initialData';
 
 // Helper to seed Cloud SQL with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
   try {
-    await pool.query(`
+    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         uid TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `));
 
-    await pool.query(`
+    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS company_info (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -43,9 +43,9 @@ export async function seedCloudSQLIfEmpty() {
         bank_rib TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `));
 
-    await pool.query(`
+    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -63,9 +63,9 @@ export async function seedCloudSQLIfEmpty() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `));
 
-    await pool.query(`
+    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -89,14 +89,14 @@ export async function seedCloudSQLIfEmpty() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `));
 
-    await pool.query(`
+    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT
       )
-    `);
+    `));
 
     const existingUsers = await db.select().from(users).limit(1);
     if (existingUsers.length === 0) {

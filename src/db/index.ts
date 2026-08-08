@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { sql as drizzleSql } from 'drizzle-orm';
 import dotenv from 'dotenv';
 import path from 'path';
 import * as schema from './schema';
@@ -18,15 +19,12 @@ const connectionString = getConnectionString();
 console.log('Initializing Neon PostgreSQL HTTP driver for serverless database connectivity...');
 
 export const sql = neon(connectionString);
+export const db = drizzle(sql, { schema });
 export const pool = {
-  query: async (text: string, params?: any[]) => {
-    if (params && params.length > 0) {
-      return await (sql as any)(text, params);
-    }
-    return await (sql as any)(text);
+  query: async (text: string) => {
+    return await db.execute(drizzleSql.raw(text));
   }
 };
-export const db = drizzle(sql, { schema });
 
 
 
