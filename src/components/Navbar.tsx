@@ -1,4 +1,4 @@
-import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RotateCcw, Trash2, Users } from 'lucide-react';
+import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RefreshCw, RotateCcw, Trash2, Users } from 'lucide-react';
 import React from 'react';
 import { User } from '../services/authService';
 
@@ -12,6 +12,7 @@ interface NavbarProps {
   onOpenPasswordModal: () => void;
   onClearDemoData: () => void;
   onResetDemoData?: () => void;
+  onRefreshData?: () => void;
   onLogout: () => void;
   currentUser: User | null;
   companyName: string;
@@ -27,6 +28,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPasswordModal,
   onClearDemoData,
   onResetDemoData,
+  onRefreshData,
   onLogout,
   currentUser,
   companyName
@@ -93,6 +95,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
+            {onRefreshData && (
+              <button
+                id="refresh-db-btn"
+                onClick={onRefreshData}
+                title="Synchroniser / Rafraîchir les données depuis la base Neon PostgreSQL"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800 rounded-lg transition-all active:scale-95"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Sync Neon DB</span>
+              </button>
+            )}
+
             {onResetDemoData && (
               <button
                 id="reset-db-btn"

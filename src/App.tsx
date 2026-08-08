@@ -129,134 +129,117 @@ export default function App() {
     try {
       const result = await api.updateCompany(updated);
       setCompany(result);
-    } catch (err) {
-      console.warn('Backend updateCompany error, applying local state:', err);
-      setCompany((prev) => ({ ...(prev || { id: 'comp-1', name: 'ALGERIE BATI PRO', country: 'Algérie' }), ...updated }));
+      setIsSettingsOpen(false);
+      setToast({
+        type: 'success',
+        title: 'Fiche Entreprise enregistrée !',
+        message: 'Les informations de votre entreprise ont été mises à jour dans Neon PostgreSQL.'
+      });
+      setTimeout(() => setToast(null), 5000);
+    } catch (err: any) {
+      console.error('Erreur sauvegarde entreprise:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur Base de Données',
+        message: err.message || 'Impossible d\'enregistrer les informations de l\'entreprise dans Neon DB.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-    setIsSettingsOpen(false);
-    setToast({
-      type: 'success',
-      title: 'Fiche Entreprise enregistrée !',
-      message: 'Les informations de votre entreprise ont été mises à jour.'
-    });
-    setTimeout(() => setToast(null), 5000);
   };
 
   // Client Handlers
   const handleSaveClient = async (clientData: Omit<Client, 'id' | 'createdAt'>) => {
-    let savedClient: Client;
     try {
+      let savedClient: Client;
       if (editingClient) {
         savedClient = await api.updateClient(editingClient.id, clientData);
+        setClients((prev) => prev.map((c) => (c.id === editingClient.id ? savedClient : c)));
       } else {
         savedClient = await api.createClient(clientData);
+        setClients((prev) => [savedClient, ...prev]);
       }
-    } catch (err) {
-      console.warn('Backend client CRUD error, applying local fallback:', err);
-      if (editingClient) {
-        savedClient = { ...editingClient, ...clientData };
-      } else {
-        savedClient = {
-          ...clientData,
-          id: `cli-${Date.now()}`,
-          createdAt: new Date().toISOString()
-        } as Client;
-      }
-    }
 
-    if (editingClient) {
-      setClients((prev) => prev.map((c) => (c.id === editingClient.id ? savedClient : c)));
-    } else {
-      setClients((prev) => [savedClient, ...prev]);
+      setEditingClient(null);
+      setIsClientModalOpen(false);
+      setToast({
+        type: 'success',
+        title: 'Fiche Client enregistrée dans Neon DB !',
+        message: 'Les coordonnées et identifiants fiscaux du client ont été enregistrés.'
+      });
+      setTimeout(() => setToast(null), 5000);
+    } catch (err: any) {
+      console.error('Backend client CRUD error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur d\'enregistrement Client',
+        message: err.message || 'L\'opération n\'a pas pu être sauvegardée dans la base Neon.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-
-    setEditingClient(null);
-    setIsClientModalOpen(false);
-    setToast({
-      type: 'success',
-      title: 'Fiche Client enregistrée !',
-      message: 'Les coordonnées et identifiants fiscaux du client ont été enregistrés.'
-    });
-    setTimeout(() => setToast(null), 5000);
   };
 
   const handleDeleteClient = async (id: string) => {
     try {
       await api.deleteClient(id);
-    } catch (err) {
-      console.warn('Backend deleteClient error, applying local fallback:', err);
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      setToast({
+        type: 'info',
+        title: 'Client supprimé',
+        message: 'Le client a été supprimé de la base de données Neon.'
+      });
+      setTimeout(() => setToast(null), 4000);
+    } catch (err: any) {
+      console.error('Backend deleteClient error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur de suppression Client',
+        message: err.message || 'Impossible de supprimer ce client de la base Neon.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-    setClients((prev) => prev.filter((c) => c.id !== id));
-    setToast({
-      type: 'info',
-      title: 'Client supprimé',
-      message: 'Le client a été supprimé de la liste.'
-    });
-    setTimeout(() => setToast(null), 4000);
   };
 
   // Invoice Handlers
   const handleSaveInvoice = async (invoiceData: Partial<Invoice>) => {
-    let savedDoc: Invoice;
     const isNew = !invoiceData.id;
 
     try {
+      let savedDoc: Invoice;
       if (invoiceData.id) {
         savedDoc = await api.updateInvoice(invoiceData.id, invoiceData);
+        setInvoices((prev) => prev.map((i) => (i.id === invoiceData.id ? savedDoc : i)));
       } else {
         savedDoc = await api.createInvoice(invoiceData);
+        setInvoices((prev) => [savedDoc, ...prev]);
       }
-    } catch (err) {
-      console.warn('Backend invoice CRUD error, applying local fallback:', err);
-      const targetClient = clients.find((c) => c.id === invoiceData.clientId);
-      const docId = invoiceData.id || `inv-${Date.now()}`;
-      savedDoc = {
-        id: docId,
-        number: invoiceData.number || 'FAC-2026-001',
-        type: invoiceData.type || 'FACTURE',
-        status: invoiceData.status || 'BROUILLON',
-        clientId: invoiceData.clientId || (clients[0]?.id || 'cli-1'),
-        client: targetClient || (invoiceData.client as Client),
-        issueDate: invoiceData.issueDate || new Date().toISOString().split('T')[0],
-        dueDate: invoiceData.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        paymentDate: invoiceData.paymentDate,
-        paymentMethod: invoiceData.paymentMethod,
-        items: invoiceData.items || [],
-        subtotalHT: invoiceData.subtotalHT || 0,
-        discountAmount: invoiceData.discountAmount || 0,
-        taxAmount: invoiceData.taxAmount || 0,
-        totalTTC: invoiceData.totalTTC || 0,
-        depositAmount: invoiceData.depositAmount || 0,
-        notes: invoiceData.notes || '',
-        paymentTerms: invoiceData.paymentTerms || 'Règlement sous 30 jours',
-        createdAt: invoiceData.createdAt || new Date().toISOString()
-      };
+
+      const docTypeName =
+        savedDoc.type === 'DEVIS'
+          ? 'Devis'
+          : savedDoc.type === 'AVOIR'
+          ? 'Avoir'
+          : 'Facture';
+
+      setIsInvoiceEditorOpen(false);
+      setEditingInvoice(null);
+      setActiveTab('invoices');
+
+      setToast({
+        type: 'success',
+        title: `${docTypeName} N° ${savedDoc.number || ''} ${isNew ? 'enregistré' : 'mis à jour'} !`,
+        message: `Le document a été enregistré avec succès dans la base Neon PostgreSQL.`
+      });
+
+      setTimeout(() => setToast(null), 6000);
+    } catch (err: any) {
+      console.error('Backend invoice CRUD error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur d\'enregistrement Document',
+        message: err.message || 'Impossible de sauvegarder ce document dans la base de données Neon.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-
-    if (invoiceData.id) {
-      setInvoices((prev) => prev.map((i) => (i.id === invoiceData.id ? savedDoc : i)));
-    } else {
-      setInvoices((prev) => [savedDoc, ...prev]);
-    }
-
-    const docTypeName =
-      savedDoc.type === 'DEVIS'
-        ? 'Devis'
-        : savedDoc.type === 'AVOIR'
-        ? 'Avoir'
-        : 'Facture';
-
-    setIsInvoiceEditorOpen(false);
-    setEditingInvoice(null);
-    setActiveTab('invoices');
-
-    setToast({
-      type: 'success',
-      title: `${docTypeName} N° ${savedDoc.number || ''} ${isNew ? 'enregistré' : 'mis à jour'} avec succès !`,
-      message: `Le document a été enregistré avec succès.`
-    });
-
-    setTimeout(() => setToast(null), 6000);
   };
 
   const handleUpdateStatus = async (
@@ -265,82 +248,47 @@ export default function App() {
     paymentDate?: string,
     paymentMethod?: string
   ) => {
-    let updated: Invoice | null = null;
     try {
-      updated = await api.updateInvoiceStatus(id, status, paymentDate, paymentMethod);
-    } catch (err) {
-      console.warn('Backend updateInvoiceStatus error, applying local fallback:', err);
+      const updated = await api.updateInvoiceStatus(id, status, paymentDate, paymentMethod);
+      setInvoices((prev) => prev.map((i) => (i.id === id ? updated : i)));
+      if (selectedInvoice && selectedInvoice.id === id) {
+        setSelectedInvoice(updated);
+      }
+      setToast({
+        type: 'success',
+        title: 'Statut mis à jour !',
+        message: `Le statut du document a été modifié en ${status} dans la base Neon.`
+      });
+      setTimeout(() => setToast(null), 4000);
+    } catch (err: any) {
+      console.error('Backend updateInvoiceStatus error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur Mise à Jour Statut',
+        message: err.message || 'Impossible de modifier le statut du document dans Neon DB.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-
-    setInvoices((prev) =>
-      prev.map((i) => {
-        if (i.id !== id) return i;
-        if (updated) return updated;
-        return {
-          ...i,
-          status,
-          ...(paymentDate ? { paymentDate } : {}),
-          ...(paymentMethod ? { paymentMethod: paymentMethod as any } : {})
-        };
-      })
-    );
-
-    if (selectedInvoice && selectedInvoice.id === id) {
-      setSelectedInvoice((prev) =>
-        prev
-          ? updated || {
-              ...prev,
-              status,
-              ...(paymentDate ? { paymentDate } : {}),
-              ...(paymentMethod ? { paymentMethod: paymentMethod as any } : {})
-            }
-          : null
-      );
-    }
-
-    setToast({
-      type: 'success',
-      title: 'Statut mis à jour !',
-      message: `Le statut du document a été modifié en ${status}.`
-    });
-    setTimeout(() => setToast(null), 4000);
   };
 
   const handleConvertQuote = async (id: string) => {
-    let resInvoice: Invoice | null = null;
-    let resQuote: Invoice | null = null;
-
     try {
       const res = await api.convertQuoteToInvoice(id);
-      resInvoice = res.invoice;
-      resQuote = res.quote;
-    } catch (err) {
-      console.warn('Backend convertQuote error, applying local fallback:', err);
-      const targetQuote = invoices.find((i) => i.id === id);
-      if (targetQuote) {
-        resQuote = { ...targetQuote, status: 'PAYEE' };
-        resInvoice = {
-          ...targetQuote,
-          id: `inv-${Date.now()}`,
-          number: generateNextDocumentNumber('FACTURE', invoices),
-          type: 'FACTURE',
-          status: 'ENVOYEE',
-          convertedFromId: targetQuote.id,
-          issueDate: new Date().toISOString().split('T')[0],
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          createdAt: new Date().toISOString()
-        };
-      }
-    }
-
-    if (resInvoice && resQuote) {
-      setInvoices((prev) => [resInvoice!, ...prev.map((i) => (i.id === id ? resQuote! : i))]);
+      setInvoices((prev) => [res.invoice, ...prev.map((i) => (i.id === id ? res.quote : i))]);
       setToast({
         type: 'success',
-        title: 'Devis converti !',
-        message: `Le devis a été converti en Facture N° ${resInvoice.number}.`
+        title: 'Devis converti dans Neon DB !',
+        message: `Le devis a été converti en Facture N° ${res.invoice.number}.`
       });
       setTimeout(() => setToast(null), 5000);
+    } catch (err: any) {
+      console.error('Backend convertQuote error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur Conversion Devis',
+        message: err.message || 'Impossible de convertir le devis dans la base Neon DB.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
   };
 
@@ -367,17 +315,23 @@ export default function App() {
   const handleDeleteInvoice = async (id: string) => {
     try {
       await api.deleteInvoice(id);
-    } catch (err) {
-      console.warn('Backend deleteInvoice error, applying local fallback:', err);
+      setInvoices((prev) => prev.filter((i) => i.id !== id));
+      if (selectedInvoice?.id === id) setSelectedInvoice(null);
+      setToast({
+        type: 'info',
+        title: 'Document supprimé',
+        message: 'La pièce a été supprimée de la base Neon PostgreSQL.'
+      });
+      setTimeout(() => setToast(null), 4000);
+    } catch (err: any) {
+      console.error('Backend deleteInvoice error:', err);
+      setToast({
+        type: 'error',
+        title: 'Erreur Suppression Document',
+        message: err.message || 'Impossible de supprimer le document de la base Neon DB.'
+      });
+      setTimeout(() => setToast(null), 6000);
     }
-    setInvoices((prev) => prev.filter((i) => i.id !== id));
-    if (selectedInvoice?.id === id) setSelectedInvoice(null);
-    setToast({
-      type: 'info',
-      title: 'Document supprimé',
-      message: 'La pièce a été supprimée avec succès.'
-    });
-    setTimeout(() => setToast(null), 4000);
   };
 
   const handleClearDemoData = () => {
@@ -551,6 +505,7 @@ export default function App() {
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
         onClearDemoData={handleClearDemoData}
         onResetDemoData={handleResetDemoData}
+        onRefreshData={loadInitialData}
         onLogout={handleLogout}
         currentUser={currentUser}
         companyName={activeCompany.name}
