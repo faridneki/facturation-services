@@ -310,9 +310,9 @@ export async function createClient(data: Partial<Client>, uid?: string): Promise
     }).returning();
 
     return mapClientRow(newRow[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create client in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to create client');
   }
 }
 
@@ -337,9 +337,9 @@ export async function updateClient(id: string, data: Partial<Client>): Promise<C
 
     if (updated.length === 0) throw new Error('Client non trouvé');
     return mapClientRow(updated[0]);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update client in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to update client');
   }
 }
 
@@ -348,9 +348,9 @@ export async function deleteClient(id: string): Promise<void> {
     // Delete any associated invoices first so foreign key constraint does not block client deletion
     await db.delete(invoices).where(eq(invoices.clientId, id));
     await db.delete(clients).where(eq(clients.id, id));
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete client in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to delete client');
   }
 }
 
@@ -383,8 +383,8 @@ export async function getAllInvoices(): Promise<Invoice[]> {
         notes: row.notes || undefined,
         paymentTerms: row.paymentTerms || undefined,
         convertedFromId: row.convertedFromId || undefined,
-        createdAt: row.createdAt ? row.createdAt.toISOString() : new Date().toISOString(),
-        updatedAt: row.updatedAt ? row.updatedAt.toISOString() : undefined,
+        createdAt: safeIsoString(row.createdAt),
+        updatedAt: row.updatedAt ? safeIsoString(row.updatedAt) : undefined,
       };
     });
   } catch (err) {
@@ -422,9 +422,9 @@ export async function createInvoice(data: Partial<Invoice>, uid?: string): Promi
 
     const allInvoices = await getAllInvoices();
     return allInvoices.find(i => i.id === id) || ({} as Invoice);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create invoice in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to create invoice');
   }
 }
 
@@ -454,9 +454,9 @@ export async function updateInvoice(id: string, data: Partial<Invoice>): Promise
 
     const allInvoices = await getAllInvoices();
     return allInvoices.find(i => i.id === id) || ({} as Invoice);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update invoice in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to update invoice');
   }
 }
 
@@ -470,9 +470,9 @@ export async function updateInvoiceStatus(id: string, status: string, paymentDat
 
     const allInvoices = await getAllInvoices();
     return allInvoices.find(i => i.id === id) || ({} as Invoice);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to update invoice status in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to update invoice status');
   }
 }
 
@@ -510,23 +510,40 @@ export async function convertQuoteToInvoice(id: string): Promise<{ quote: Invoic
 
     const freshQuote = (await getAllInvoices()).find(i => i.id === id)!;
     return { quote: freshQuote, invoice: newInvoice };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to convert quote in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to convert quote');
   }
 }
 
 export async function deleteInvoice(id: string): Promise<void> {
   try {
     await db.delete(invoices).where(eq(invoices.id, id));
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to delete invoice in Cloud SQL:', error);
-    throw new Error('Database operation failed', { cause: error });
+    throw new Error(error?.message || 'Failed to delete invoice');
   }
 }
 
 // Helpers
+function safeIsoString(val: any): string {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'string') return val;
+  if (val instanceof Date) return val.toISOString();
+  try {
+    return new Date(val).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
+}
+
+function safeShortDate(val: any): string {
+  const str = safeIsoString(val);
+  return str.split('T')[0] || str;
+}
+
 function mapCompanyRow(row: any): CompanySettings {
+  if (!row) return initialCompanySettings;
   return {
     id: row.id,
     name: row.name,
@@ -554,13 +571,14 @@ function mapCompanyRow(row: any): CompanySettings {
 }
 
 function mapClientRow(row: any): Client {
+  if (!row) return {} as Client;
   return {
     id: row.id,
     nom: row.nom,
     name: row.nom,
     email: row.email || undefined,
-    telephone: row.telephone,
-    phone: row.telephone,
+    telephone: row.telephone || '',
+    phone: row.telephone || '',
     adresse: row.adresse || undefined,
     address: row.adresse || undefined,
     ncBancaire: row.ncBancaire || undefined,
@@ -568,9 +586,9 @@ function mapClientRow(row: any): Client {
     rc: row.rc || undefined,
     ai: row.ai || undefined,
     nis: row.nis || undefined,
-    creditMax: row.creditMax || 0,
-    creditActuel: row.creditActuel || 0,
-    createdAt: row.createdAt ? row.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    updatedAt: row.updatedAt ? row.updatedAt.toISOString().split('T')[0] : undefined,
+    creditMax: Number(row.creditMax) || 0,
+    creditActuel: Number(row.creditActuel) || 0,
+    createdAt: safeShortDate(row.createdAt),
+    updatedAt: row.updatedAt ? safeShortDate(row.updatedAt) : undefined,
   };
 }
