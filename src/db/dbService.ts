@@ -13,8 +13,10 @@ export async function seedCloudSQLIfEmpty() {
         uid TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS company_info (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -40,8 +42,10 @@ export async function seedCloudSQLIfEmpty() {
         bank_account TEXT,
         bank_rib TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -58,8 +62,10 @@ export async function seedCloudSQLIfEmpty() {
         credit_actuel DOUBLE PRECISION DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -82,12 +88,14 @@ export async function seedCloudSQLIfEmpty() {
         converted_from_id TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
+    `);
 
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT
-      );
+      )
     `);
 
     const existingUsers = await db.select().from(users).limit(1);

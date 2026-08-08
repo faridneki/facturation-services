@@ -49,8 +49,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Seed PostgreSQL database if empty
-seedCloudSQLIfEmpty();
+// Lazy DB initialization helper
+let initPromise: Promise<void> | null = null;
+function ensureDbInitialized() {
+  if (!initPromise) {
+    initPromise = seedCloudSQLIfEmpty().catch((err) => {
+      console.error('Database lazy init error:', err);
+      initPromise = null;
+    });
+  }
+  return initPromise;
+}
+
+// Ensure database tables exist before processing API calls
+app.use('/api', async (req, res, next) => {
+  await ensureDbInitialized();
+  next();
+});
 
 // --- API ROUTES ---
 
