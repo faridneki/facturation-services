@@ -37,10 +37,11 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 }) => {
   if (!invoice) return null;
 
-  const activeClient: Client = client || invoice.client || {
+  const activeClient: Client = client || (invoice as any).client || {
     id: invoice.clientId || 'default',
-    name: 'Client Inconnu',
-    type: 'PARTICULIER'
+    nom: 'Client Inconnu',
+    telephone: '-',
+    createdAt: new Date().toISOString()
   };
 
   const [paymentMethod, setPaymentMethod] = useState<'Virement' | 'Carte' | 'Chèque' | 'Espèces'>('Virement');
