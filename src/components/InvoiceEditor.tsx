@@ -91,6 +91,12 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
     return generateNextDocumentNumber(initialType, invoices);
   });
   const [clientId, setClientId] = useState<string>(initialInvoice?.clientId || (clients[0]?.id || ''));
+
+  React.useEffect(() => {
+    if (!clientId && clients.length > 0) {
+      setClientId(clients[0].id);
+    }
+  }, [clients, clientId]);
   const [issueDate, setIssueDate] = useState(
     initialInvoice?.issueDate || new Date().toISOString().split('T')[0]
   );
