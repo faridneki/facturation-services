@@ -5,11 +5,20 @@ async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Erreur réseau' }));
-    throw new Error(err.error || `Erreur HTTP ${res.status}`);
+  const text = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    if (!res.ok) {
+      throw new Error(`Erreur HTTP ${res.status}: ${text.slice(0, 100)}`);
+    }
+    throw new Error(`Format de réponse invalide de l'API (${url})`);
   }
-  return res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Erreur HTTP ${res.status}`);
+  }
+  return data as T;
 }
 
 export const api = {
