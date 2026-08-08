@@ -1,28 +1,18 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import dotenv from 'dotenv';
-import path from 'path';
-import * as schema from './schema';
+import app from '../server';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_USAVX1b4ueyr@ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech/facturation_db?sslmode=require';
-
-const getConnectionString = () => {
-  const envUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
-  const isValidEnvUrl = envUrl && envUrl.includes('@') && !envUrl.includes('user:password');
-  return isValidEnvUrl ? envUrl! : DEFAULT_NEON_URL;
-};
-
-const connectionString = getConnectionString();
-console.log('Initializing Neon PostgreSQL HTTP driver for serverless database connectivity...');
-
-export const sql = neon(connectionString);
-export const pool = {
-  query: (text: string, params?: any[]) => sql.query(text, params)
-};
-export const db = drizzle(sql, { schema });
-
-
-
-
+export default async function handler(req: any, res: any) {
+  try {
+    if (req.url) {
+      if (req.url.includes('/api/index.ts')) {
+        req.url = req.url.replace('/api/index.ts', '/api');
+      }
+      if (!req.url.startsWith('/api')) {
+        req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+      }
+    }
+    return app(req, res);
+  } catch (err: any) {
+    console.error('Vercel API handler exception:', err);
+    return res.status(500).json({ error: err?.message || 'Serverless execution error' });
+  }
+}

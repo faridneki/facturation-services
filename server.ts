@@ -3,7 +3,6 @@ dotenv.config();
 
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { calculateDashboardStats } from './src/utils/calculations';
 import {
   seedCloudSQLIfEmpty,
@@ -270,12 +269,17 @@ export default app;
 
 // Server boot with Vite middleware
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.error('Failed to load Vite middleware:', e);
+    }
   } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
