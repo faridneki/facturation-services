@@ -4,8 +4,11 @@ import { eq, desc, sql as drizzleSql } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
 import { initialCompanySettings } from '../data/initialData';
 
+let isDbInitialized = false;
+
 // Helper to seed Cloud SQL with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
+  if (isDbInitialized) return;
   try {
     await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS users (
@@ -13,10 +16,8 @@ export async function seedCloudSQLIfEmpty() {
         uid TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `));
+      );
 
-    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS company_info (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -42,10 +43,8 @@ export async function seedCloudSQLIfEmpty() {
         bank_account TEXT,
         bank_rib TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `));
+      );
 
-    await db.execute(drizzleSql.raw(`
       CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -62,10 +61,16 @@ export async function seedCloudSQLIfEmpty() {
         credit_actuel DOUBLE PRECISION DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `));
+      );
 
-    await db.execute(drizzleSql.raw(`
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nis TEXT;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_max DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_actuel DOUBLE PRECISION DEFAULT 0;
+
       CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
@@ -88,14 +93,17 @@ export async function seedCloudSQLIfEmpty() {
         converted_from_id TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `));
+      );
 
-    await db.execute(drizzleSql.raw(`
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT;
+      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS converted_from_id TEXT;
+
       CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT
-      )
+      );
     `));
 
     const existingUsers = await db.select().from(users).limit(1);
@@ -111,6 +119,8 @@ export async function seedCloudSQLIfEmpty() {
     if (existingCompany.length === 0) {
       await saveCompanySettings(initialCompanySettings);
     }
+
+    isDbInitialized = true;
   } catch (err) {
     console.error('Error initializing Cloud SQL tables:', err);
   }
