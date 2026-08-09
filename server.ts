@@ -270,6 +270,22 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Fallback 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: `Route non trouvée: ${req.method} ${req.originalUrl || req.url}` });
+});
+
+// Global Express error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled Express Server Error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({
+      error: err?.message || 'Erreur interne du serveur',
+      details: String(err)
+    });
+  }
+});
+
 export default app;
 
 // Server boot with Vite middleware
