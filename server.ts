@@ -27,9 +27,7 @@ import { getOrCreateUser } from './src/db/users';
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));
-
-// CORS & Headers middleware
+// CORS & Headers middleware (handled first, before any body reading)
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -38,6 +36,26 @@ app.use((req, res, next) => {
     return res.sendStatus(200);
   }
   next();
+});
+
+// Custom body parser middleware compatible with Vercel serverless & Express
+app.use((req: any, res: any, next: any) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    return next();
+  }
+  // On Vercel serverless, req.body is already consumed and parsed by the serverless host
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (e) {
+        // keep string
+      }
+    }
+    return next();
+  }
+  // In standard Express dev/prod container server, parse body from stream
+  return express.json({ limit: '10mb' })(req, res, next);
 });
 
 // Lazy DB initialization helper

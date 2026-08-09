@@ -355,19 +355,20 @@ export async function getAllClients(): Promise<Client[]> {
   }
 }
 
-export async function createClient(data: Partial<Client>, uid?: string): Promise<Client> {
-  const id = data.id || `cli-${Date.now().toString().substring(6)}`;
-  const nom = String(data.nom || data.name || 'Client').trim();
-  const email = String(data.email || '').trim();
-  const telephone = String(data.telephone || data.phone || '').trim();
-  const adresse = String(data.adresse || data.address || '').trim();
-  const ncBancaire = String(data.ncBancaire || '').trim();
-  const nif = String(data.nif || data.siret || '').trim();
-  const rc = String(data.rc || '').trim();
-  const ai = String(data.ai || (data as any).art || '').trim();
-  const nis = String(data.nis || '').trim();
-  const creditMax = typeof data.creditMax === 'number' ? data.creditMax : (parseFloat(String(data.creditMax || 0)) || 0);
-  const creditActuel = typeof data.creditActuel === 'number' ? data.creditActuel : (parseFloat(String(data.creditActuel || 0)) || 0);
+export async function createClient(data: Partial<Client> = {}, uid?: string): Promise<Client> {
+  const clientData = data || {};
+  const id = clientData.id || `cli-${Date.now().toString().substring(6)}`;
+  const nom = String(clientData.nom || clientData.name || 'Client').trim();
+  const email = String(clientData.email || '').trim();
+  const telephone = String(clientData.telephone || clientData.phone || '').trim();
+  const adresse = String(clientData.adresse || clientData.address || '').trim();
+  const ncBancaire = String(clientData.ncBancaire || '').trim();
+  const nif = String(clientData.nif || clientData.siret || '').trim();
+  const rc = String(clientData.rc || '').trim();
+  const ai = String(clientData.ai || (clientData as any).art || '').trim();
+  const nis = String(clientData.nis || '').trim();
+  const creditMax = typeof clientData.creditMax === 'number' ? clientData.creditMax : (parseFloat(String(clientData.creditMax || 0)) || 0);
+  const creditActuel = typeof clientData.creditActuel === 'number' ? clientData.creditActuel : (parseFloat(String(clientData.creditActuel || 0)) || 0);
 
   const payload = {
     id,
