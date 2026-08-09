@@ -43,18 +43,26 @@ app.use((req: any, res: any, next: any) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next();
   }
-  // On Vercel serverless, req.body is already consumed and parsed by the serverless host
   if (req.body !== undefined && req.body !== null) {
-    if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    if (typeof req.body === 'string') {
       try {
         req.body = JSON.parse(req.body);
+      } catch (e) {
+        // keep string
+      }
+    } else if (Buffer.isBuffer && Buffer.isBuffer(req.body)) {
+      try {
+        req.body = JSON.parse(req.body.toString('utf-8'));
       } catch (e) {
         // keep string
       }
     }
     return next();
   }
-  // In standard Express dev/prod container server, parse body from stream
+  if (process.env.VERCEL) {
+    req.body = {};
+    return next();
+  }
   return express.json({ limit: '10mb' })(req, res, next);
 });
 

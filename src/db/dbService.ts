@@ -138,6 +138,12 @@ export async function seedCloudSQLIfEmpty() {
       await saveCompanySettings(initialCompanySettings);
     }
 
+    const existingClients = await db.select().from(clients).limit(1);
+    if (existingClients.length === 0) {
+      console.log('Seeding initial demo clients and invoices to Neon PostgreSQL...');
+      await resetDemoData();
+    }
+
     isDbInitialized = true;
   } catch (err) {
     console.error('Error initializing Cloud SQL tables:', err);
@@ -353,13 +359,30 @@ async function autoRepairClientsTable() {
 
 export async function getAllClients(): Promise<Client[]> {
   try {
-    const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+    let rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+    if (rows.length === 0) {
+      console.log('No clients found in Neon PostgreSQL, auto-seeding demo data...');
+      try {
+        await resetDemoData();
+        rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+      } catch (seedErr) {
+        console.warn('Auto-seed in getAllClients error:', seedErr);
+      }
+    }
     return rows.map(mapClientRow);
   } catch (err) {
     console.error('Error fetching clients from DB, attempting repair...', err);
     await autoRepairClientsTable();
     try {
-      const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+      let rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+      if (rows.length === 0) {
+        try {
+          await resetDemoData();
+          rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+        } catch {
+          // Ignore
+        }
+      }
       return rows.map(mapClientRow);
     } catch {
       return [];
