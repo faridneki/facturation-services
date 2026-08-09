@@ -65,6 +65,7 @@ function ensureDbInitialized() {
     initPromise = seedCloudSQLIfEmpty().catch((err) => {
       console.error('Database lazy init error:', err);
       initPromise = null;
+      throw err;
     });
   }
   return initPromise;
