@@ -10,15 +10,15 @@ let isDbInitialized = false;
 export async function seedCloudSQLIfEmpty() {
   if (isDbInitialized) return;
   try {
-    await db.execute(drizzleSql.raw(`
-      CREATE TABLE IF NOT EXISTS users (
+    const statements = [
+      `CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         uid TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )`,
 
-      CREATE TABLE IF NOT EXISTS company_info (
+      `CREATE TABLE IF NOT EXISTS company_info (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
         name TEXT NOT NULL,
@@ -43,9 +43,9 @@ export async function seedCloudSQLIfEmpty() {
         bank_account TEXT,
         bank_rib TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )`,
 
-      CREATE TABLE IF NOT EXISTS clients (
+      `CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
         nom TEXT NOT NULL,
@@ -61,17 +61,17 @@ export async function seedCloudSQLIfEmpty() {
         credit_actuel DOUBLE PRECISION DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )`,
 
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai TEXT;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS nis TEXT;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_max DOUBLE PRECISION DEFAULT 0;
-      ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_actuel DOUBLE PRECISION DEFAULT 0;
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai TEXT`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nis TEXT`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_max DOUBLE PRECISION DEFAULT 0`,
+      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_actuel DOUBLE PRECISION DEFAULT 0`,
 
-      CREATE TABLE IF NOT EXISTS invoices (
+      `CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
         user_id TEXT REFERENCES users(uid),
         number TEXT NOT NULL,
@@ -93,18 +93,26 @@ export async function seedCloudSQLIfEmpty() {
         converted_from_id TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )`,
 
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0;
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT;
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT;
-      ALTER TABLE invoices ADD COLUMN IF NOT EXISTS converted_from_id TEXT;
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT`,
+      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS converted_from_id TEXT`,
 
-      CREATE TABLE IF NOT EXISTS system_flags (
+      `CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT
-      );
-    `));
+      )`
+    ];
+
+    for (const stmt of statements) {
+      try {
+        await db.execute(drizzleSql.raw(stmt));
+      } catch (err) {
+        console.warn('Individual table init warning:', err);
+      }
+    }
 
     const existingUsers = await db.select().from(users).limit(1);
     if (existingUsers.length === 0) {
