@@ -30,6 +30,7 @@ export default async function handler(req: any, res: any) {
     }
 
     req.url = targetUrl;
+    req.originalUrl = targetUrl;
 
     return new Promise((resolve) => {
       let resolved = false;
