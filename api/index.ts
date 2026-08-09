@@ -2,17 +2,44 @@ import app from '../server';
 
 export default async function handler(req: any, res: any) {
   try {
-    if (req.url) {
-      if (req.url.includes('/api/index.ts')) {
-        req.url = req.url.replace('/api/index.ts', '/api');
-      }
-      if (!req.url.startsWith('/api')) {
-        req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
-      }
+    const rawUrl = req.url || '';
+    const matchedPath = (req.headers['x-matched-path'] as string) || '';
+    const forwardedUri = (req.headers['x-forwarded-uri'] as string) || '';
+    const rewriteUrl = (req.headers['x-rewrite-url'] as string) || '';
+
+    let targetUrl = rawUrl;
+
+    if (matchedPath && !matchedPath.includes('/api/index')) {
+      targetUrl = matchedPath;
+    } else if (forwardedUri && !forwardedUri.includes('/api/index')) {
+      targetUrl = forwardedUri;
+    } else if (rewriteUrl && !rewriteUrl.includes('/api/index')) {
+      targetUrl = rewriteUrl;
     }
+
+    if (targetUrl.includes('/api/index.ts')) {
+      targetUrl = targetUrl.replace('/api/index.ts', '');
+    } else if (targetUrl.includes('/api/index')) {
+      targetUrl = targetUrl.replace('/api/index', '');
+    }
+
+    if (!targetUrl || targetUrl === '/' || targetUrl === '') {
+      targetUrl = '/api';
+    } else if (!targetUrl.startsWith('/api')) {
+      targetUrl = '/api' + (targetUrl.startsWith('/') ? targetUrl : '/' + targetUrl);
+    }
+
+    req.url = targetUrl;
+
     return app(req, res);
   } catch (err: any) {
     console.error('Vercel API handler exception:', err);
-    return res.status(500).json({ error: err?.message || 'Serverless execution error' });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error: err?.message || 'Serverless execution error',
+        details: String(err)
+      });
+    }
   }
 }
+
