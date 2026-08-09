@@ -1,4 +1,4 @@
-import { db } from './index';
+import { db, sql } from './index';
 import { clients, companyInfo, invoices, users } from './schema';
 import { eq, desc, sql as drizzleSql } from 'drizzle-orm';
 import { Client, CompanySettings, Invoice, InvoiceItem } from '../types';
@@ -6,7 +6,7 @@ import { initialCompanySettings } from '../data/initialData';
 
 let isDbInitialized = false;
 
-// Helper to seed Cloud SQL with admin user and create tables if empty
+// Helper to seed Cloud SQL / Neon with admin user and create tables if empty
 export async function seedCloudSQLIfEmpty() {
   if (isDbInitialized) return;
   try {
@@ -20,7 +20,7 @@ export async function seedCloudSQLIfEmpty() {
 
       `CREATE TABLE IF NOT EXISTS company_info (
         id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES users(uid),
+        user_id TEXT,
         name TEXT NOT NULL,
         legal_name TEXT,
         tax_id TEXT,
@@ -47,10 +47,10 @@ export async function seedCloudSQLIfEmpty() {
 
       `CREATE TABLE IF NOT EXISTS clients (
         id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES users(uid),
+        user_id TEXT,
         nom TEXT NOT NULL,
         email TEXT,
-        telephone TEXT NOT NULL,
+        telephone TEXT,
         adresse TEXT,
         nc_bancaire TEXT,
         nif TEXT,
@@ -63,6 +63,10 @@ export async function seedCloudSQLIfEmpty() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
+      `ALTER TABLE company_info DROP CONSTRAINT IF EXISTS company_info_user_id_fkey`,
+      `ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_user_id_fkey`,
+      `ALTER TABLE clients ALTER COLUMN telephone DROP NOT NULL`,
+
       `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT`,
       `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT`,
       `ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT`,
@@ -73,7 +77,7 @@ export async function seedCloudSQLIfEmpty() {
 
       `CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
-        user_id TEXT REFERENCES users(uid),
+        user_id TEXT,
         number TEXT NOT NULL,
         type TEXT NOT NULL,
         status TEXT NOT NULL,
@@ -82,11 +86,11 @@ export async function seedCloudSQLIfEmpty() {
         due_date TEXT NOT NULL,
         payment_date TEXT,
         payment_method TEXT,
-        items_json TEXT NOT NULL,
-        subtotal_ht DOUBLE PRECISION NOT NULL,
-        discount_amount DOUBLE PRECISION NOT NULL,
-        tax_amount DOUBLE PRECISION NOT NULL,
-        total_ttc DOUBLE PRECISION NOT NULL,
+        items_json TEXT,
+        subtotal_ht DOUBLE PRECISION DEFAULT 0,
+        discount_amount DOUBLE PRECISION DEFAULT 0,
+        tax_amount DOUBLE PRECISION DEFAULT 0,
+        total_ttc DOUBLE PRECISION DEFAULT 0,
         deposit_amount DOUBLE PRECISION DEFAULT 0,
         notes TEXT,
         payment_terms TEXT,
@@ -95,6 +99,12 @@ export async function seedCloudSQLIfEmpty() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
+      `ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_user_id_fkey`,
+      `ALTER TABLE invoices ALTER COLUMN items_json DROP NOT NULL`,
+      `ALTER TABLE invoices ALTER COLUMN subtotal_ht DROP NOT NULL`,
+      `ALTER TABLE invoices ALTER COLUMN discount_amount DROP NOT NULL`,
+      `ALTER TABLE invoices ALTER COLUMN tax_amount DROP NOT NULL`,
+      `ALTER TABLE invoices ALTER COLUMN total_ttc DROP NOT NULL`,
       `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0`,
       `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT`,
       `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT`,
@@ -317,6 +327,8 @@ async function autoRepairClientsTable() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_user_id_fkey`,
+    `ALTER TABLE clients ALTER COLUMN telephone DROP NOT NULL`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS user_id TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nom TEXT`,
     `ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT`,
@@ -392,16 +404,29 @@ export async function createClient(data: Partial<Client> = {}, uid?: string): Pr
       return mapClientRow(newRow[0]);
     }
   } catch (err) {
-    console.warn('createClient initial insert failed, running table repair and retry...', err);
+    console.warn('createClient initial insert failed, running table repair and raw SQL fallback...', err);
     await autoRepairClientsTable();
     try {
-      const retryRow = await db.insert(clients).values(payload).returning();
-      if (retryRow && retryRow[0]) {
-        return mapClientRow(retryRow[0]);
-      }
+      await sql`
+        INSERT INTO clients (id, user_id, nom, email, telephone, adresse, nc_bancaire, nif, rc, ai, nis, credit_max, credit_actuel)
+        VALUES (${id}, ${uid || null}, ${nom || 'Client'}, ${email}, ${telephone}, ${adresse}, ${ncBancaire}, ${nif}, ${rc}, ${ai}, ${nis}, ${creditMax}, ${creditActuel})
+        ON CONFLICT (id) DO UPDATE SET
+          nom = EXCLUDED.nom,
+          email = EXCLUDED.email,
+          telephone = EXCLUDED.telephone,
+          adresse = EXCLUDED.adresse,
+          nc_bancaire = EXCLUDED.nc_bancaire,
+          nif = EXCLUDED.nif,
+          rc = EXCLUDED.rc,
+          ai = EXCLUDED.ai,
+          nis = EXCLUDED.nis,
+          credit_max = EXCLUDED.credit_max,
+          credit_actuel = EXCLUDED.credit_actuel,
+          updated_at = NOW();
+      `;
     } catch (retryErr: any) {
-      console.error('createClient retry failed:', retryErr);
-      throw new Error(retryErr?.message || 'Failed to create client in database');
+      console.error('createClient raw SQL insert failed:', retryErr);
+      throw new Error(retryErr?.message || 'Erreur lors de la création du client dans la base de données');
     }
   }
 
@@ -431,16 +456,28 @@ export async function updateClient(id: string, data: Partial<Client>): Promise<C
       return mapClientRow(updated[0]);
     }
   } catch (err) {
-    console.warn('updateClient initial update failed, running table repair and retry...', err);
+    console.warn('updateClient initial update failed, running table repair and raw SQL fallback...', err);
     await autoRepairClientsTable();
     try {
-      const retryUpdated = await db.update(clients).set(updatePayload).where(eq(clients.id, id)).returning();
-      if (retryUpdated && retryUpdated[0]) {
-        return mapClientRow(retryUpdated[0]);
-      }
+      await sql`
+        UPDATE clients SET
+          nom = COALESCE(NULLIF(${updatePayload.nom || ''}, ''), nom),
+          email = COALESCE(${updatePayload.email ?? null}, email),
+          telephone = COALESCE(${updatePayload.telephone ?? null}, telephone),
+          adresse = COALESCE(${updatePayload.adresse ?? null}, adresse),
+          nc_bancaire = COALESCE(${updatePayload.ncBancaire ?? null}, nc_bancaire),
+          nif = COALESCE(${updatePayload.nif ?? null}, nif),
+          rc = COALESCE(${updatePayload.rc ?? null}, rc),
+          ai = COALESCE(${updatePayload.ai ?? null}, ai),
+          nis = COALESCE(${updatePayload.nis ?? null}, nis),
+          credit_max = ${updatePayload.creditMax ?? 0},
+          credit_actuel = ${updatePayload.creditActuel ?? 0},
+          updated_at = NOW()
+        WHERE id = ${id};
+      `;
     } catch (retryErr: any) {
       console.error('updateClient retry failed:', retryErr);
-      throw new Error(retryErr?.message || 'Failed to update client in database');
+      throw new Error(retryErr?.message || 'Erreur lors de la mise à jour du client dans la base de données');
     }
   }
 
@@ -506,39 +543,114 @@ export async function getAllInvoices(): Promise<Invoice[]> {
   }
 }
 
-export async function createInvoice(data: Partial<Invoice>, uid?: string): Promise<Invoice> {
-  try {
-    const id = data.id || `inv-${Date.now().toString().substring(6)}`;
-    const itemsJson = JSON.stringify(data.items || []);
-
-    const newRows = await db.insert(invoices).values({
-      id,
-      userId: uid || null,
-      number: data.number || 'FAC-001',
-      type: data.type || 'FACTURE',
-      status: data.status || 'BROUILLON',
-      clientId: data.clientId || '',
-      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
-      dueDate: data.dueDate || new Date().toISOString().split('T')[0],
-      paymentDate: data.paymentDate || null,
-      paymentMethod: data.paymentMethod || null,
-      itemsJson,
-      subtotalHT: data.subtotalHT || 0,
-      discountAmount: data.discountAmount || 0,
-      taxAmount: data.taxAmount || 0,
-      totalTTC: data.totalTTC || 0,
-      depositAmount: data.depositAmount || 0,
-      notes: data.notes || null,
-      paymentTerms: data.paymentTerms || null,
-      convertedFromId: data.convertedFromId || null,
-    }).returning();
-
-    const allInvoices = await getAllInvoices();
-    return allInvoices.find(i => i.id === id) || ({} as Invoice);
-  } catch (error: any) {
-    console.error('Failed to create invoice in Cloud SQL:', error);
-    throw new Error(error?.message || 'Failed to create invoice');
+async function autoRepairInvoicesTable() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS invoices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      number TEXT NOT NULL,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      issue_date TEXT NOT NULL,
+      due_date TEXT NOT NULL,
+      payment_date TEXT,
+      payment_method TEXT,
+      items_json TEXT,
+      subtotal_ht DOUBLE PRECISION DEFAULT 0,
+      discount_amount DOUBLE PRECISION DEFAULT 0,
+      tax_amount DOUBLE PRECISION DEFAULT 0,
+      total_ttc DOUBLE PRECISION DEFAULT 0,
+      deposit_amount DOUBLE PRECISION DEFAULT 0,
+      notes TEXT,
+      payment_terms TEXT,
+      converted_from_id TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_user_id_fkey`,
+    `ALTER TABLE invoices ALTER COLUMN items_json DROP NOT NULL`,
+    `ALTER TABLE invoices ALTER COLUMN subtotal_ht DROP NOT NULL`,
+    `ALTER TABLE invoices ALTER COLUMN discount_amount DROP NOT NULL`,
+    `ALTER TABLE invoices ALTER COLUMN tax_amount DROP NOT NULL`,
+    `ALTER TABLE invoices ALTER COLUMN total_ttc DROP NOT NULL`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT`,
+    `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS converted_from_id TEXT`
+  ];
+  for (const stmt of statements) {
+    try {
+      await db.execute(drizzleSql.raw(stmt));
+    } catch {
+      // Ignore warnings
+    }
   }
+}
+
+export async function createInvoice(data: Partial<Invoice>, uid?: string): Promise<Invoice> {
+  const id = data.id || `inv-${Date.now().toString().substring(6)}`;
+  const itemsJson = JSON.stringify(data.items || []);
+  const payload = {
+    id,
+    userId: uid || null,
+    number: data.number || 'FAC-001',
+    type: data.type || 'FACTURE',
+    status: data.status || 'BROUILLON',
+    clientId: data.clientId || '',
+    issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+    dueDate: data.dueDate || new Date().toISOString().split('T')[0],
+    paymentDate: data.paymentDate || null,
+    paymentMethod: data.paymentMethod || null,
+    itemsJson,
+    subtotalHT: data.subtotalHT || 0,
+    discountAmount: data.discountAmount || 0,
+    taxAmount: data.taxAmount || 0,
+    totalTTC: data.totalTTC || 0,
+    depositAmount: data.depositAmount || 0,
+    notes: data.notes || null,
+    paymentTerms: data.paymentTerms || null,
+    convertedFromId: data.convertedFromId || null,
+  };
+
+  try {
+    await db.insert(invoices).values(payload).returning();
+  } catch (error: any) {
+    console.warn('Failed to create invoice in Drizzle, attempting repair and raw SQL fallback...', error);
+    await autoRepairInvoicesTable();
+    try {
+      await sql`
+        INSERT INTO invoices (
+          id, user_id, number, type, status, client_id, issue_date, due_date,
+          payment_date, payment_method, items_json, subtotal_ht, discount_amount,
+          tax_amount, total_ttc, deposit_amount, notes, payment_terms, converted_from_id
+        ) VALUES (
+          ${id}, ${uid || null}, ${payload.number}, ${payload.type}, ${payload.status},
+          ${payload.clientId}, ${payload.issueDate}, ${payload.dueDate},
+          ${payload.paymentDate}, ${payload.paymentMethod}, ${itemsJson},
+          ${payload.subtotalHT}, ${payload.discountAmount}, ${payload.taxAmount},
+          ${payload.totalTTC}, ${payload.depositAmount}, ${payload.notes},
+          ${payload.paymentTerms}, ${payload.convertedFromId}
+        ) ON CONFLICT (id) DO UPDATE SET
+          status = EXCLUDED.status,
+          items_json = EXCLUDED.items_json,
+          subtotal_ht = EXCLUDED.subtotal_ht,
+          discount_amount = EXCLUDED.discount_amount,
+          tax_amount = EXCLUDED.tax_amount,
+          total_ttc = EXCLUDED.total_ttc,
+          deposit_amount = EXCLUDED.deposit_amount,
+          notes = EXCLUDED.notes,
+          payment_terms = EXCLUDED.payment_terms,
+          updated_at = NOW();
+      `;
+    } catch (rawErr: any) {
+      console.error('createInvoice raw SQL error:', rawErr);
+      throw new Error(rawErr?.message || 'Erreur lors de la création du document dans la base de données');
+    }
+  }
+
+  const allInvoices = await getAllInvoices();
+  return allInvoices.find(i => i.id === id) || ({} as Invoice);
 }
 
 export async function updateInvoice(id: string, data: Partial<Invoice>): Promise<Invoice> {
