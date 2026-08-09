@@ -43,25 +43,25 @@ app.use((req: any, res: any, next: any) => {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next();
   }
+  if (req.body !== undefined && req.body !== null && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
+    return next();
+  }
   if (req.body !== undefined && req.body !== null) {
     if (typeof req.body === 'string') {
       try {
         req.body = JSON.parse(req.body);
+        return next();
       } catch (e) {
         // keep string
       }
     } else if (Buffer.isBuffer && Buffer.isBuffer(req.body)) {
       try {
         req.body = JSON.parse(req.body.toString('utf-8'));
+        return next();
       } catch (e) {
         // keep string
       }
     }
-    return next();
-  }
-  if (process.env.VERCEL) {
-    req.body = {};
-    return next();
   }
   return express.json({ limit: '10mb' })(req, res, next);
 });
