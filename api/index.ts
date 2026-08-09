@@ -31,7 +31,26 @@ export default async function handler(req: any, res: any) {
 
     req.url = targetUrl;
 
-    return app(req, res);
+    return new Promise((resolve) => {
+      let resolved = false;
+      const done = () => {
+        if (!resolved) {
+          resolved = true;
+          resolve(undefined);
+        }
+      };
+
+      res.on('finish', done);
+      res.on('close', done);
+      res.on('error', done);
+
+      app(req, res, (err?: any) => {
+        if (err && !res.headersSent) {
+          res.status(500).json({ error: err?.message || 'Express error', details: String(err) });
+        }
+        done();
+      });
+    });
   } catch (err: any) {
     console.error('Vercel API handler exception:', err);
     if (!res.headersSent) {
