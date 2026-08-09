@@ -9,7 +9,7 @@ export const users = pgTable('users', {
 
 export const companyInfo = pgTable('company_info', {
   id: text('id').primaryKey(),
-  userId: text('user_id').references(() => users.uid),
+  userId: text('user_id'),
   name: text('name').notNull(),
   legalName: text('legal_name'),
   taxId: text('tax_id'),
@@ -36,10 +36,10 @@ export const companyInfo = pgTable('company_info', {
 
 export const clients = pgTable('clients', {
   id: text('id').primaryKey(),
-  userId: text('user_id').references(() => users.uid),
+  userId: text('user_id'),
   nom: text('nom').notNull(),
   email: text('email'),
-  telephone: text('telephone').notNull(),
+  telephone: text('telephone'),
   adresse: text('adresse'),
   ncBancaire: text('nc_bancaire'),
   nif: text('nif'),
@@ -54,7 +54,7 @@ export const clients = pgTable('clients', {
 
 export const invoices = pgTable('invoices', {
   id: text('id').primaryKey(),
-  userId: text('user_id').references(() => users.uid),
+  userId: text('user_id'),
   number: text('number').notNull(),
   type: text('type').notNull(),
   status: text('status').notNull(),
@@ -63,7 +63,7 @@ export const invoices = pgTable('invoices', {
   dueDate: text('due_date').notNull(),
   paymentDate: text('payment_date'),
   paymentMethod: text('payment_method'),
-  itemsJson: text('items_json').notNull(), // Stores InvoiceItem[] JSON string
+  itemsJson: text('items_json').notNull(),
   subtotalHT: doublePrecision('subtotal_ht').notNull(),
   discountAmount: doublePrecision('discount_amount').notNull(),
   taxAmount: doublePrecision('tax_amount').notNull(),
@@ -74,4 +74,9 @@ export const invoices = pgTable('invoices', {
   convertedFromId: text('converted_from_id'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const systemFlags = pgTable('system_flags', {
+  key: text('key').primaryKey(),
+  value: text('value'),
 });

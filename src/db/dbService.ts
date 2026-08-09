@@ -298,67 +298,161 @@ export async function saveCompanySettings(data: Partial<CompanySettings>, uid?: 
 }
 
 // Clients
+async function autoRepairClientsTable() {
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS clients (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      nom TEXT NOT NULL,
+      email TEXT,
+      telephone TEXT,
+      adresse TEXT,
+      nc_bancaire TEXT,
+      nif TEXT,
+      rc TEXT,
+      ai TEXT,
+      nis TEXT,
+      credit_max DOUBLE PRECISION DEFAULT 0,
+      credit_actuel DOUBLE PRECISION DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS user_id TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nom TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS telephone TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS adresse TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nis TEXT`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_max DOUBLE PRECISION DEFAULT 0`,
+    `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_actuel DOUBLE PRECISION DEFAULT 0`
+  ];
+  for (const stmt of statements) {
+    try {
+      await db.execute(drizzleSql.raw(stmt));
+    } catch {
+      // Ignore individual warnings
+    }
+  }
+}
+
 export async function getAllClients(): Promise<Client[]> {
   try {
     const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
     return rows.map(mapClientRow);
   } catch (err) {
-    console.error('Error fetching clients from DB:', err);
-    throw err;
+    console.error('Error fetching clients from DB, attempting repair...', err);
+    await autoRepairClientsTable();
+    try {
+      const rows = await db.select().from(clients).orderBy(desc(clients.createdAt));
+      return rows.map(mapClientRow);
+    } catch {
+      return [];
+    }
   }
 }
 
 export async function createClient(data: Partial<Client>, uid?: string): Promise<Client> {
-  try {
-    const id = data.id || `cli-${Date.now().toString().substring(6)}`;
-    const newRow = await db.insert(clients).values({
-      id,
-      userId: uid || null,
-      nom: data.nom || data.name || 'Client',
-      email: data.email || '',
-      telephone: data.telephone || data.phone || '',
-      adresse: data.adresse || data.address || '',
-      ncBancaire: data.ncBancaire || '',
-      nif: data.nif || '',
-      rc: data.rc || '',
-      ai: data.ai || '',
-      nis: data.nis || '',
-      creditMax: data.creditMax || 0,
-      creditActuel: data.creditActuel || 0,
-    }).returning();
+  const id = data.id || `cli-${Date.now().toString().substring(6)}`;
+  const nom = String(data.nom || data.name || 'Client').trim();
+  const email = String(data.email || '').trim();
+  const telephone = String(data.telephone || data.phone || '').trim();
+  const adresse = String(data.adresse || data.address || '').trim();
+  const ncBancaire = String(data.ncBancaire || '').trim();
+  const nif = String(data.nif || data.siret || '').trim();
+  const rc = String(data.rc || '').trim();
+  const ai = String(data.ai || (data as any).art || '').trim();
+  const nis = String(data.nis || '').trim();
+  const creditMax = typeof data.creditMax === 'number' ? data.creditMax : (parseFloat(String(data.creditMax || 0)) || 0);
+  const creditActuel = typeof data.creditActuel === 'number' ? data.creditActuel : (parseFloat(String(data.creditActuel || 0)) || 0);
 
-    return mapClientRow(newRow[0]);
-  } catch (error: any) {
-    console.error('Failed to create client in Cloud SQL:', error);
-    throw new Error(error?.message || 'Failed to create client');
+  const payload = {
+    id,
+    userId: uid || null,
+    nom: nom || 'Client',
+    email,
+    telephone,
+    adresse,
+    ncBancaire,
+    nif,
+    rc,
+    ai,
+    nis,
+    creditMax,
+    creditActuel,
+  };
+
+  try {
+    const newRow = await db.insert(clients).values(payload).returning();
+    if (newRow && newRow[0]) {
+      return mapClientRow(newRow[0]);
+    }
+  } catch (err) {
+    console.warn('createClient initial insert failed, running table repair and retry...', err);
+    await autoRepairClientsTable();
+    try {
+      const retryRow = await db.insert(clients).values(payload).returning();
+      if (retryRow && retryRow[0]) {
+        return mapClientRow(retryRow[0]);
+      }
+    } catch (retryErr: any) {
+      console.error('createClient retry failed:', retryErr);
+      throw new Error(retryErr?.message || 'Failed to create client in database');
+    }
   }
+
+  return mapClientRow(payload);
 }
 
 export async function updateClient(id: string, data: Partial<Client>): Promise<Client> {
+  const updatePayload: any = {
+    updatedAt: new Date(),
+  };
+
+  if (data.nom || data.name) updatePayload.nom = String(data.nom || data.name || '').trim();
+  if (data.email !== undefined) updatePayload.email = String(data.email || '').trim();
+  if (data.telephone !== undefined || data.phone !== undefined) updatePayload.telephone = String(data.telephone || data.phone || '').trim();
+  if (data.adresse !== undefined || data.address !== undefined) updatePayload.adresse = String(data.adresse ?? data.address ?? '').trim();
+  if (data.ncBancaire !== undefined) updatePayload.ncBancaire = String(data.ncBancaire || '').trim();
+  if (data.nif !== undefined || data.siret !== undefined) updatePayload.nif = String(data.nif ?? data.siret ?? '').trim();
+  if (data.rc !== undefined) updatePayload.rc = String(data.rc || '').trim();
+  if (data.ai !== undefined || (data as any).art !== undefined) updatePayload.ai = String(data.ai ?? (data as any).art ?? '').trim();
+  if (data.nis !== undefined) updatePayload.nis = String(data.nis || '').trim();
+  if (data.creditMax !== undefined) updatePayload.creditMax = typeof data.creditMax === 'number' ? data.creditMax : (parseFloat(String(data.creditMax || 0)) || 0);
+  if (data.creditActuel !== undefined) updatePayload.creditActuel = typeof data.creditActuel === 'number' ? data.creditActuel : (parseFloat(String(data.creditActuel || 0)) || 0);
+
   try {
-    const updatePayload: any = {
-      updatedAt: new Date(),
-    };
-    if (data.nom || data.name) updatePayload.nom = data.nom || data.name;
-    if (data.email !== undefined) updatePayload.email = data.email;
-    if (data.telephone || data.phone) updatePayload.telephone = data.telephone || data.phone;
-    if (data.adresse !== undefined || data.address !== undefined) updatePayload.adresse = data.adresse ?? data.address;
-    if (data.ncBancaire !== undefined) updatePayload.ncBancaire = data.ncBancaire;
-    if (data.nif !== undefined || data.siret !== undefined) updatePayload.nif = data.nif ?? data.siret;
-    if (data.rc !== undefined) updatePayload.rc = data.rc;
-    if (data.ai !== undefined || (data as any).art !== undefined) updatePayload.ai = data.ai ?? (data as any).art;
-    if (data.nis !== undefined) updatePayload.nis = data.nis;
-    if (data.creditMax !== undefined) updatePayload.creditMax = data.creditMax;
-    if (data.creditActuel !== undefined) updatePayload.creditActuel = data.creditActuel;
-
     const updated = await db.update(clients).set(updatePayload).where(eq(clients.id, id)).returning();
-
-    if (updated.length === 0) throw new Error('Client non trouvé');
-    return mapClientRow(updated[0]);
-  } catch (error: any) {
-    console.error('Failed to update client in Cloud SQL:', error);
-    throw new Error(error?.message || 'Failed to update client');
+    if (updated && updated[0]) {
+      return mapClientRow(updated[0]);
+    }
+  } catch (err) {
+    console.warn('updateClient initial update failed, running table repair and retry...', err);
+    await autoRepairClientsTable();
+    try {
+      const retryUpdated = await db.update(clients).set(updatePayload).where(eq(clients.id, id)).returning();
+      if (retryUpdated && retryUpdated[0]) {
+        return mapClientRow(retryUpdated[0]);
+      }
+    } catch (retryErr: any) {
+      console.error('updateClient retry failed:', retryErr);
+      throw new Error(retryErr?.message || 'Failed to update client in database');
+    }
   }
+
+  try {
+    const existing = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
+    if (existing && existing[0]) {
+      return mapClientRow(existing[0]);
+    }
+  } catch {
+    // Ignore fallback query error
+  }
+
+  throw new Error('Client introuvable après mise à jour');
 }
 
 export async function deleteClient(id: string): Promise<void> {
