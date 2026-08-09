@@ -2,26 +2,17 @@ import app from '../server';
 
 export default async function handler(req: any, res: any) {
   try {
-    const rawUrl = req.url || '';
-    const matchedPath = (req.headers['x-matched-path'] as string) || '';
-    const forwardedUri = (req.headers['x-forwarded-uri'] as string) || '';
-    const rewriteUrl = (req.headers['x-rewrite-url'] as string) || '';
+    let targetUrl = req.url || '';
 
-    let targetUrl = rawUrl;
+    // If Vercel rewrite stripped the path, check original request headers
+    const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
 
-    if (matchedPath && !matchedPath.includes('/api/index')) {
-      targetUrl = matchedPath;
-    } else if (forwardedUri && !forwardedUri.includes('/api/index')) {
+    if (forwardedUri && forwardedUri.startsWith('/api')) {
       targetUrl = forwardedUri;
-    } else if (rewriteUrl && !rewriteUrl.includes('/api/index')) {
-      targetUrl = rewriteUrl;
     }
 
-    if (targetUrl.includes('/api/index.ts')) {
-      targetUrl = targetUrl.replace('/api/index.ts', '');
-    } else if (targetUrl.includes('/api/index')) {
-      targetUrl = targetUrl.replace('/api/index', '');
-    }
+    // Clean up internal file artifacts
+    targetUrl = targetUrl.replace('/api/index.ts', '').replace('/api/index', '');
 
     if (!targetUrl || targetUrl === '/' || targetUrl === '') {
       targetUrl = '/api';
@@ -62,4 +53,5 @@ export default async function handler(req: any, res: any) {
     }
   }
 }
+
 

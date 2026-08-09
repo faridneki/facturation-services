@@ -1,57 +1,31 @@
-import app from '../server';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { sql as drizzleSql } from 'drizzle-orm';
+import dotenv from 'dotenv';
+import path from 'path';
+import * as schema from './schema';
 
-export default async function handler(req: any, res: any) {
-  try {
-    let targetUrl = req.url || '';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-    // If Vercel rewrite stripped the path, check original request headers
-    const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
+const DEFAULT_NEON_URL = 'postgresql://neondb_owner:npg_USAVX1b4ueyr@ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech/facturation_db?sslmode=require';
 
-    if (forwardedUri && forwardedUri.startsWith('/api')) {
-      targetUrl = forwardedUri;
-    }
+const getConnectionString = () => {
+  const envUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+  const isValidEnvUrl = envUrl && envUrl.includes('@') && !envUrl.includes('user:password');
+  return isValidEnvUrl ? envUrl! : DEFAULT_NEON_URL;
+};
 
-    // Clean up internal file artifacts
-    targetUrl = targetUrl.replace('/api/index.ts', '').replace('/api/index', '');
+const connectionString = getConnectionString();
+console.log('Initializing Neon PostgreSQL HTTP driver for serverless database connectivity...');
 
-    if (!targetUrl || targetUrl === '/' || targetUrl === '') {
-      targetUrl = '/api';
-    } else if (!targetUrl.startsWith('/api')) {
-      targetUrl = '/api' + (targetUrl.startsWith('/') ? targetUrl : '/' + targetUrl);
-    }
-
-    req.url = targetUrl;
-    req.originalUrl = targetUrl;
-
-    return new Promise((resolve) => {
-      let resolved = false;
-      const done = () => {
-        if (!resolved) {
-          resolved = true;
-          resolve(undefined);
-        }
-      };
-
-      res.on('finish', done);
-      res.on('close', done);
-      res.on('error', done);
-
-      app(req, res, (err?: any) => {
-        if (err && !res.headersSent) {
-          res.status(500).json({ error: err?.message || 'Express error', details: String(err) });
-        }
-        done();
-      });
-    });
-  } catch (err: any) {
-    console.error('Vercel API handler exception:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: err?.message || 'Serverless execution error',
-        details: String(err)
-      });
-    }
+export const sql = neon(connectionString);
+export const db = drizzle(sql, { schema });
+export const pool = {
+  query: async (text: string) => {
+    return await db.execute(drizzleSql.raw(text));
   }
-}
+};
+
+
 
 

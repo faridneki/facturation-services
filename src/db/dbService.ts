@@ -116,11 +116,15 @@ export async function seedCloudSQLIfEmpty() {
       )`
     ];
 
-    for (const stmt of statements) {
-      try {
-        await db.execute(drizzleSql.raw(stmt));
-      } catch (err) {
-        console.warn('Individual table init warning:', err);
+    try {
+      await db.execute(drizzleSql.raw(statements.join(';\n')));
+    } catch {
+      for (const stmt of statements) {
+        try {
+          await db.execute(drizzleSql.raw(stmt));
+        } catch (err) {
+          console.warn('Individual table init warning:', err);
+        }
       }
     }
 
