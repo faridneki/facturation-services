@@ -1,27 +1,60 @@
-import app from '../server';
+import app from '../src/serverApp';
 
 export default function handler(req: any, res: any) {
-  try {
-    const rawUrl = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || req.url || '';
-    let path = rawUrl;
-    if (path.includes('?')) {
-      path = path.split('?')[0];
-    }
+  return new Promise((resolve) => {
+    // Safety timeout (8.5s) to guarantee response before Vercel 10s lambda termination
+    const timer = setTimeout(() => {
+      if (!res.headersSent) {
+        console.error('Vercel handler timeout on URL:', req.url);
+        res.status(504).json({
+          error: 'Gateway Timeout',
+          message: 'Le serveur backend n\'a pas répondu à temps.'
+        });
+      }
+      resolve(false);
+    }, 8500);
 
-    if (!path.startsWith('/api')) {
-      path = '/api' + (path.startsWith('/') ? path : '/' + path);
-    }
+    const cleanupAndResolve = (val: boolean) => {
+      clearTimeout(timer);
+      resolve(val);
+    };
 
-    req.url = path;
+    res.on('finish', () => cleanupAndResolve(true));
+    res.on('close', () => cleanupAndResolve(true));
+    res.on('error', (err: any) => {
+      console.error('Vercel Express response error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal Serverless Error', details: String(err) });
+      }
+      cleanupAndResolve(false);
+    });
 
-    return app(req, res);
-  } catch (err: any) {
-    console.error('Vercel catch-all handler exception:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: err?.message || 'Serverless execution error',
-        details: String(err)
-      });
+    try {
+      let url = req.url || '';
+      
+      const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
+      if (forwardedUri && forwardedUri.startsWith('/api')) {
+        url = forwardedUri;
+      }
+
+      if (!url || url === '/') {
+        url = '/api';
+      } else if (!url.startsWith('/api')) {
+        url = '/api' + (url.startsWith('/') ? url : '/' + url);
+      }
+
+      req.url = url;
+
+      app(req, res);
+    } catch (err: any) {
+      console.error('Vercel API handler exception:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: err?.message || 'Serverless execution exception',
+          details: String(err)
+        });
+      }
+      cleanupAndResolve(false);
     }
-  }
+  });
 }
