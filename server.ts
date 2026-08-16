@@ -71,9 +71,8 @@ let initPromise: Promise<void> | null = null;
 function ensureDbInitialized() {
   if (!initPromise) {
     initPromise = seedCloudSQLIfEmpty().catch((err) => {
-      console.error('Database lazy init error:', err);
+      console.error('Database lazy init warning (non-fatal):', err);
       initPromise = null;
-      throw err;
     });
   }
   return initPromise;
@@ -85,16 +84,11 @@ app.use(async (req, res, next) => {
   if (url.startsWith('/api') || ['/health', '/users', '/company', '/clients', '/invoices', '/demo', '/stats', '/auth'].some(p => url.startsWith(p))) {
     try {
       await ensureDbInitialized();
-      next();
     } catch (err) {
-      console.error('API Init Middleware Error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Database initialization error', details: String(err) });
-      }
+      console.warn('API Init Middleware warning:', err);
     }
-  } else {
-    next();
   }
+  next();
 });
 
 // --- API ROUTER ---
@@ -355,11 +349,13 @@ async function startServer() {
     });
   }
 
-  if (!process.env.VERCEL) {
+  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running at http://localhost:${PORT} with PostgreSQL backend`);
     });
   }
 }
 
-startServer();
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  startServer();
+}
