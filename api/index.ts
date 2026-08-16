@@ -31,12 +31,15 @@ export default function handler(req: any, res: any) {
 
     try {
       let url = req.url || '';
-      const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
-      if (forwardedUri && forwardedUri.startsWith('/api')) {
+      const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || (req.headers['x-matched-path'] as string) || '';
+
+      if (forwardedUri && forwardedUri.startsWith('/api') && !forwardedUri.startsWith('/api/index')) {
         url = forwardedUri;
+      } else if (url.startsWith('/api/index')) {
+        url = url.replace('/api/index', '/api');
       }
 
-      if (!url || url === '/' || url === '/api/index.ts' || url === '/api/index') {
+      if (!url || url === '/') {
         url = '/api';
       }
 
