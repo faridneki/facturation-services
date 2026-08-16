@@ -80,20 +80,28 @@ function ensureDbInitialized() {
 }
 
 // Ensure database tables exist before processing API calls
-app.use('/api', async (req, res, next) => {
-  try {
-    await ensureDbInitialized();
+app.use(async (req, res, next) => {
+  const url = req.originalUrl || req.url || '';
+  if (url.startsWith('/api') || ['/health', '/users', '/company', '/clients', '/invoices', '/demo', '/stats', '/auth'].some(p => url.startsWith(p))) {
+    try {
+      await ensureDbInitialized();
+      next();
+    } catch (err) {
+      console.error('API Init Middleware Error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Database initialization error', details: String(err) });
+      }
+    }
+  } else {
     next();
-  } catch (err) {
-    console.error('API Init Middleware Error:', err);
-    res.status(500).json({ error: 'Database initialization error', details: String(err) });
   }
 });
 
-// --- API ROUTES ---
+// --- API ROUTER ---
+const apiRouter = express.Router();
 
 // Health Check
-app.get('/api/health', async (req, res) => {
+apiRouter.get('/health', async (req, res) => {
   const rawUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING || '';
   let dbHost = 'ep-young-wildflower-agt8whdg-pooler.c-2.eu-central-1.aws.neon.tech';
   let dbName = 'facturation_db';
@@ -133,7 +141,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // User Sync & Query API
-app.get('/api/users', async (req, res) => {
+apiRouter.get('/users', async (req, res) => {
   try {
     const list = await getAllUsers();
     res.json(list);
@@ -142,7 +150,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-app.post('/api/auth/sync-user', async (req, res) => {
+apiRouter.post('/auth/sync-user', async (req, res) => {
   try {
     const { uid, email } = req.body;
     if (!uid || !email) {
@@ -156,7 +164,7 @@ app.post('/api/auth/sync-user', async (req, res) => {
 });
 
 // Company Settings
-app.get('/api/company', async (req, res) => {
+apiRouter.get('/company', async (req, res) => {
   try {
     const company = await getCompanySettings();
     res.json(company);
@@ -165,7 +173,7 @@ app.get('/api/company', async (req, res) => {
   }
 });
 
-app.post('/api/company', async (req, res) => {
+apiRouter.post('/company', async (req, res) => {
   try {
     const updated = await saveCompanySettings(req.body);
     res.json(updated);
@@ -175,7 +183,7 @@ app.post('/api/company', async (req, res) => {
 });
 
 // Clients API
-app.get('/api/clients', async (req, res) => {
+apiRouter.get('/clients', async (req, res) => {
   try {
     const clientsList = await getAllClients();
     res.json(clientsList);
@@ -184,7 +192,7 @@ app.get('/api/clients', async (req, res) => {
   }
 });
 
-app.post('/api/clients', async (req, res) => {
+apiRouter.post('/clients', async (req, res) => {
   try {
     const newClient = await createClient(req.body);
     res.status(201).json(newClient);
@@ -193,7 +201,7 @@ app.post('/api/clients', async (req, res) => {
   }
 });
 
-app.put('/api/clients/:id', async (req, res) => {
+apiRouter.put('/clients/:id', async (req, res) => {
   try {
     const updated = await updateClient(req.params.id, req.body);
     res.json(updated);
@@ -202,7 +210,7 @@ app.put('/api/clients/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/clients/:id', async (req, res) => {
+apiRouter.delete('/clients/:id', async (req, res) => {
   try {
     await deleteClient(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -212,7 +220,7 @@ app.delete('/api/clients/:id', async (req, res) => {
 });
 
 // Invoices & Quotes API
-app.get('/api/invoices', async (req, res) => {
+apiRouter.get('/invoices', async (req, res) => {
   try {
     const invoicesList = await getAllInvoices();
     res.json(invoicesList);
@@ -221,7 +229,7 @@ app.get('/api/invoices', async (req, res) => {
   }
 });
 
-app.post('/api/invoices', async (req, res) => {
+apiRouter.post('/invoices', async (req, res) => {
   try {
     const newInvoice = await createInvoice(req.body);
     res.status(201).json(newInvoice);
@@ -230,7 +238,7 @@ app.post('/api/invoices', async (req, res) => {
   }
 });
 
-app.put('/api/invoices/:id', async (req, res) => {
+apiRouter.put('/invoices/:id', async (req, res) => {
   try {
     const updated = await updateInvoice(req.params.id, req.body);
     res.json(updated);
@@ -239,7 +247,7 @@ app.put('/api/invoices/:id', async (req, res) => {
   }
 });
 
-app.patch('/api/invoices/:id/status', async (req, res) => {
+apiRouter.patch('/invoices/:id/status', async (req, res) => {
   try {
     const { status, paymentDate, paymentMethod } = req.body;
     const updated = await updateInvoiceStatus(req.params.id, status, paymentDate, paymentMethod);
@@ -249,7 +257,7 @@ app.patch('/api/invoices/:id/status', async (req, res) => {
   }
 });
 
-app.post('/api/invoices/:id/convert-quote', async (req, res) => {
+apiRouter.post('/invoices/:id/convert-quote', async (req, res) => {
   try {
     const result = await convertQuoteToInvoice(req.params.id);
     res.status(201).json(result);
@@ -258,7 +266,7 @@ app.post('/api/invoices/:id/convert-quote', async (req, res) => {
   }
 });
 
-app.delete('/api/invoices/:id', async (req, res) => {
+apiRouter.delete('/invoices/:id', async (req, res) => {
   try {
     await deleteInvoice(req.params.id);
     res.json({ success: true, id: req.params.id });
@@ -267,8 +275,8 @@ app.delete('/api/invoices/:id', async (req, res) => {
   }
 });
 
-// Data Management Routes (Clear)
-app.post('/api/demo/clear', async (req, res) => {
+// Data Management Routes (Clear & Reset)
+apiRouter.post('/demo/clear', async (req, res) => {
   try {
     await clearAllData();
     res.json({ success: true, message: 'Toutes les données ont été effacées de la base.' });
@@ -277,7 +285,7 @@ app.post('/api/demo/clear', async (req, res) => {
   }
 });
 
-app.post('/api/demo/reset', async (req, res) => {
+apiRouter.post('/demo/reset', async (req, res) => {
   try {
     await resetDemoData();
     res.json({ success: true, message: 'Les données de test ont été réinjectées dans la base Neon.' });
@@ -287,7 +295,7 @@ app.post('/api/demo/reset', async (req, res) => {
 });
 
 // Analytics Dashboard Stats
-app.get('/api/stats', async (req, res) => {
+apiRouter.get('/stats', async (req, res) => {
   try {
     const [invList, cliList] = await Promise.all([getAllInvoices(), getAllClients()]);
     const stats = calculateDashboardStats(invList, cliList);
@@ -296,6 +304,10 @@ app.get('/api/stats', async (req, res) => {
     res.status(500).json({ error: err.message || 'Error computing stats' });
   }
 });
+
+// Mount the API Router for both `/api` prefix and root route fallback
+app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Fallback 404 handler for API routes
 app.use('/api/*', (req, res) => {

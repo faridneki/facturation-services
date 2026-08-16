@@ -10,6 +10,15 @@ let isDbInitialized = false;
 export async function seedCloudSQLIfEmpty() {
   if (isDbInitialized) return;
   try {
+    // Fast path: if database tables are already initialized, return immediately
+    try {
+      await db.select().from(clients).limit(1);
+      isDbInitialized = true;
+      return;
+    } catch {
+      // Tables do not exist yet, proceed with schema initialization
+    }
+
     const statements = [
       `CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -63,18 +72,6 @@ export async function seedCloudSQLIfEmpty() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      `ALTER TABLE company_info DROP CONSTRAINT IF EXISTS company_info_user_id_fkey`,
-      `ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_user_id_fkey`,
-      `ALTER TABLE clients ALTER COLUMN telephone DROP NOT NULL`,
-
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nc_bancaire TEXT`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nif TEXT`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS rc TEXT`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS ai TEXT`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS nis TEXT`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_max DOUBLE PRECISION DEFAULT 0`,
-      `ALTER TABLE clients ADD COLUMN IF NOT EXISTS credit_actuel DOUBLE PRECISION DEFAULT 0`,
-
       `CREATE TABLE IF NOT EXISTS invoices (
         id TEXT PRIMARY KEY,
         user_id TEXT,
@@ -99,32 +96,17 @@ export async function seedCloudSQLIfEmpty() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      `ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_user_id_fkey`,
-      `ALTER TABLE invoices ALTER COLUMN items_json DROP NOT NULL`,
-      `ALTER TABLE invoices ALTER COLUMN subtotal_ht DROP NOT NULL`,
-      `ALTER TABLE invoices ALTER COLUMN discount_amount DROP NOT NULL`,
-      `ALTER TABLE invoices ALTER COLUMN tax_amount DROP NOT NULL`,
-      `ALTER TABLE invoices ALTER COLUMN total_ttc DROP NOT NULL`,
-      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deposit_amount DOUBLE PRECISION DEFAULT 0`,
-      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT`,
-      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms TEXT`,
-      `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS converted_from_id TEXT`,
-
       `CREATE TABLE IF NOT EXISTS system_flags (
         key TEXT PRIMARY KEY,
         value TEXT
       )`
     ];
 
-    try {
-      await db.execute(drizzleSql.raw(statements.join(';\n')));
-    } catch {
-      for (const stmt of statements) {
-        try {
-          await db.execute(drizzleSql.raw(stmt));
-        } catch (err) {
-          console.warn('Individual table init warning:', err);
-        }
+    for (const stmt of statements) {
+      try {
+        await db.execute(drizzleSql.raw(stmt));
+      } catch (err) {
+        console.warn('Individual table init warning:', err);
       }
     }
 
