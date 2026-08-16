@@ -1,60 +1,17 @@
-import app from '../src/serverApp';
+import { handleApiRequest } from '../src/apiHandler';
 
-export default function handler(req: any, res: any) {
-  return new Promise((resolve) => {
-    // Safety timeout (8.5s) to guarantee response before Vercel 10s lambda termination
-    const timer = setTimeout(() => {
-      if (!res.headersSent) {
-        console.error('Vercel handler timeout on URL:', req.url);
-        res.status(504).json({
-          error: 'Gateway Timeout',
-          message: 'Le serveur backend n\'a pas répondu à temps.'
-        });
-      }
-      resolve(false);
-    }, 8500);
-
-    const cleanupAndResolve = (val: boolean) => {
-      clearTimeout(timer);
-      resolve(val);
-    };
-
-    res.on('finish', () => cleanupAndResolve(true));
-    res.on('close', () => cleanupAndResolve(true));
-    res.on('error', (err: any) => {
-      console.error('Vercel Express response error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'Internal Serverless Error', details: String(err) });
-      }
-      cleanupAndResolve(false);
-    });
-
-    try {
-      let url = req.url || '';
-      
-      const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
-      if (forwardedUri && forwardedUri.startsWith('/api')) {
-        url = forwardedUri;
-      }
-
-      if (!url || url === '/') {
-        url = '/api';
-      } else if (!url.startsWith('/api')) {
-        url = '/api' + (url.startsWith('/') ? url : '/' + url);
-      }
-
-      req.url = url;
-
-      app(req, res);
-    } catch (err: any) {
-      console.error('Vercel API handler exception:', err);
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: err?.message || 'Serverless execution exception',
-          details: String(err)
-        });
-      }
-      cleanupAndResolve(false);
+export default async function handler(req: any, res: any) {
+  try {
+    await handleApiRequest(req, res);
+  } catch (err: any) {
+    console.error('Fatal Serverless Error:', err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({
+        error: err?.message || 'Serverless Exception',
+        details: String(err)
+      }));
     }
-  });
+  }
 }
