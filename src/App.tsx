@@ -104,6 +104,7 @@ export default function App() {
       setStats(calculateDashboardStats(loadedInvoices, loadedClients));
     } catch (err: any) {
       console.error('Erreur chargement base de données:', err);
+      setDbError(err.message || String(err));
       setCompany(initialCompanySettings);
       setClients([]);
       setInvoices([]);
