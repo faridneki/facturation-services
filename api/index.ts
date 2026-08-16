@@ -1,31 +1,43 @@
 import app from '../server';
 
 export default function handler(req: any, res: any) {
-  try {
-    let url = req.url || '';
-    
-    // Support forwarded or rewritten URLs if present
-    const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
-    if (forwardedUri && forwardedUri.startsWith('/api')) {
-      url = forwardedUri;
-    }
+  return new Promise((resolve) => {
+    // Force Vercel Serverless Function to wait until Express finishes sending the HTTP response
+    res.on('finish', () => resolve(true));
+    res.on('close', () => resolve(true));
+    res.on('error', (err: any) => {
+      console.error('Vercel Express response error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal Serverless Error', details: String(err) });
+      }
+      resolve(false);
+    });
 
-    if (!url || url === '/' || url === '/api/index.ts' || url === '/api/index') {
-      url = '/api';
-    } else if (!url.startsWith('/api')) {
-      url = '/api' + (url.startsWith('/') ? url : '/' + url);
-    }
+    try {
+      let url = req.url || '';
+      const forwardedUri = (req.headers['x-forwarded-uri'] as string) || (req.headers['x-rewrite-url'] as string) || '';
+      if (forwardedUri && forwardedUri.startsWith('/api')) {
+        url = forwardedUri;
+      }
 
-    req.url = url;
+      if (!url || url === '/' || url === '/api/index.ts' || url === '/api/index') {
+        url = '/api';
+      } else if (!url.startsWith('/api')) {
+        url = '/api' + (url.startsWith('/') ? url : '/' + url);
+      }
 
-    return app(req, res);
-  } catch (err: any) {
-    console.error('Vercel API handler exception:', err);
-    if (!res.headersSent) {
-      return res.status(500).json({
-        error: err?.message || 'Serverless execution error',
-        details: String(err)
-      });
+      req.url = url;
+
+      app(req, res);
+    } catch (err: any) {
+      console.error('Vercel API handler exception:', err);
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: err?.message || 'Serverless execution exception',
+          details: String(err)
+        });
+      }
+      resolve(false);
     }
-  }
+  });
 }
