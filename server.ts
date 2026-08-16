@@ -305,13 +305,20 @@ apiRouter.get('/stats', async (req, res) => {
   }
 });
 
+// Root API welcome
+apiRouter.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'API Facturation PostgreSQL Active' });
+});
+
 // Mount the API Router for both `/api` prefix and root route fallback
 app.use('/api', apiRouter);
 app.use('/', apiRouter);
 
-// Fallback 404 handler for API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: `Route non trouvée: ${req.method} ${req.originalUrl || req.url}` });
+// Fallback catch-all 404 handler for any unhandled request
+app.use((req, res) => {
+  if (!res.headersSent) {
+    res.status(404).json({ error: `Route non trouvée: ${req.method} ${req.originalUrl || req.url}` });
+  }
 });
 
 // Global Express error handler
