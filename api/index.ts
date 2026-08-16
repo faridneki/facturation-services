@@ -1,4 +1,4 @@
-import app from '../server';
+import app from '../src/serverApp';
 
 export default function handler(req: any, res: any) {
   return new Promise((resolve) => {
