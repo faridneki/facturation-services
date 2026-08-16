@@ -2,15 +2,31 @@ import app from '../server';
 
 export default function handler(req: any, res: any) {
   return new Promise((resolve) => {
-    // Force Vercel Serverless Function to wait until Express finishes sending the HTTP response
-    res.on('finish', () => resolve(true));
-    res.on('close', () => resolve(true));
+    // Safety timeout (8.5s) to guarantee response before Vercel 10s lambda termination
+    const timer = setTimeout(() => {
+      if (!res.headersSent) {
+        console.error('Vercel handler timeout on URL:', req.url);
+        res.status(504).json({
+          error: 'Gateway Timeout',
+          message: 'Le serveur backend n\'a pas répondu à temps.'
+        });
+      }
+      resolve(false);
+    }, 8500);
+
+    const cleanupAndResolve = (val: boolean) => {
+      clearTimeout(timer);
+      resolve(val);
+    };
+
+    res.on('finish', () => cleanupAndResolve(true));
+    res.on('close', () => cleanupAndResolve(true));
     res.on('error', (err: any) => {
       console.error('Vercel Express response error:', err);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Internal Serverless Error', details: String(err) });
       }
-      resolve(false);
+      cleanupAndResolve(false);
     });
 
     try {
@@ -22,8 +38,6 @@ export default function handler(req: any, res: any) {
 
       if (!url || url === '/' || url === '/api/index.ts' || url === '/api/index') {
         url = '/api';
-      } else if (!url.startsWith('/api')) {
-        url = '/api' + (url.startsWith('/') ? url : '/' + url);
       }
 
       req.url = url;
@@ -37,7 +51,7 @@ export default function handler(req: any, res: any) {
           details: String(err)
         });
       }
-      resolve(false);
+      cleanupAndResolve(false);
     }
   });
 }

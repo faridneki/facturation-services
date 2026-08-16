@@ -102,13 +102,13 @@ export async function seedCloudSQLIfEmpty() {
       )`
     ];
 
-    for (const stmt of statements) {
-      try {
-        await db.execute(drizzleSql.raw(stmt));
-      } catch (err) {
-        console.warn('Individual table init warning:', err);
-      }
-    }
+    await Promise.all(
+      statements.map(stmt => 
+        db.execute(drizzleSql.raw(stmt)).catch((err) => {
+          console.warn('Individual table init warning:', err);
+        })
+      )
+    );
 
     const existingUsers = await db.select().from(users).limit(1);
     if (existingUsers.length === 0) {
