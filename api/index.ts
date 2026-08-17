@@ -638,6 +638,7 @@ function getPath(req: any): string {
   let rawUrl = (req.headers && (req.headers['x-forwarded-uri'] as string)) ||
                (req.headers && (req.headers['x-rewrite-url'] as string)) ||
                (req.headers && (req.headers['x-matched-path'] as string)) ||
+               req.originalUrl ||
                req.url ||
                '';
 

@@ -9,8 +9,10 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use(async (req, res) => {
+// Route /api requests to API handler
+app.use('/api', async (req, res) => {
   await handler(req, res);
 });
 
 export default app;
+
