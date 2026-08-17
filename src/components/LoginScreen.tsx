@@ -7,10 +7,12 @@ import {
   Lock,
   LogIn,
   ShieldCheck,
+  Smartphone,
   UserCheck
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { authService } from '../services/authService';
+import { InstallAppModal } from './InstallAppModal';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -23,6 +25,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, compan
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showInstallModal, setShowInstallModal] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,8 +163,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, compan
           >
             <span>Remplir démo (admin / admin123)</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowInstallModal(true)}
+            className="w-full py-2 px-3 bg-blue-950/40 hover:bg-blue-900/60 text-blue-300 text-xs rounded-xl border border-blue-800/50 transition-colors flex items-center justify-center space-x-2"
+          >
+            <Smartphone className="h-3.5 w-3.5 text-blue-400" />
+            <span>Installer l'application sur Android</span>
+          </button>
         </div>
       </div>
+
+      <InstallAppModal
+        isOpen={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+      />
 
       {/* Footer copyright */}
       <div className="mt-8 text-center text-slate-500 text-[11px] space-y-1 relative z-10">

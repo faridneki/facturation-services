@@ -8,6 +8,7 @@ import { Dashboard } from './components/Dashboard';
 import { InvoiceDetailModal } from './components/InvoiceDetailModal';
 import { InvoiceEditor } from './components/InvoiceEditor';
 import { InvoiceList } from './components/InvoiceList';
+import { InstallAppModal } from './components/InstallAppModal';
 import { LoginScreen } from './components/LoginScreen';
 import { Navbar } from './components/Navbar';
 import { PasswordChangeModal } from './components/PasswordChangeModal';
@@ -57,6 +58,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrismaModalOpen, setIsPrismaModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -504,6 +506,7 @@ export default function App() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenPrismaModal={() => setIsPrismaModalOpen(true)}
         onOpenPasswordModal={() => setIsPasswordModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
         onClearDemoData={handleClearDemoData}
         onResetDemoData={handleResetDemoData}
         onRefreshData={loadInitialData}
@@ -694,6 +697,11 @@ export default function App() {
       <PasswordChangeModal
         isOpen={isPasswordModalOpen}
         onClose={() => setIsPasswordModalOpen(false)}
+      />
+
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
       />
 
       <ConfirmationModal

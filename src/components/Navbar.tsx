@@ -1,4 +1,4 @@
-import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RefreshCw, RotateCcw, Trash2, Users } from 'lucide-react';
+import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RefreshCw, RotateCcw, Smartphone, Trash2, Users } from 'lucide-react';
 import React from 'react';
 import { User } from '../services/authService';
 
@@ -10,6 +10,7 @@ interface NavbarProps {
   onOpenSettings: () => void;
   onOpenPrismaModal: () => void;
   onOpenPasswordModal: () => void;
+  onOpenInstallModal?: () => void;
   onClearDemoData: () => void;
   onResetDemoData?: () => void;
   onRefreshData?: () => void;
@@ -26,6 +27,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenPrismaModal,
   onOpenPasswordModal,
+  onOpenInstallModal,
   onClearDemoData,
   onResetDemoData,
   onRefreshData,
@@ -138,6 +140,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Code className="h-3.5 w-3.5 text-emerald-400" />
               <span>Code Prisma</span>
             </button>
+
+            {onOpenInstallModal && (
+              <button
+                id="install-android-btn"
+                onClick={onOpenInstallModal}
+                title="Installer l'application sur Android / Mobile"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-blue-900/40 hover:bg-blue-800/60 text-blue-300 border border-blue-700/60 rounded-lg transition-colors"
+              >
+                <Smartphone className="h-3.5 w-3.5 text-blue-400" />
+                <span className="hidden sm:inline">App Android</span>
+              </button>
+            )}
 
             <button
               id="security-settings-btn"

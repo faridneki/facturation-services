@@ -1,0 +1,44 @@
+{
+  "name": "Factura - Facturation & Devis BTP",
+  "short_name": "Factura BTP",
+  "description": "Application professionnelle de gestion de facturation, devis et suivi clients BTP en Algérie",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "fr",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nouveau Devis",
+      "short_name": "Devis",
+      "description": "Créer un nouveau devis BTP",
+      "url": "/?action=new_quote",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nouvelle Facture",
+      "short_name": "Facture",
+      "description": "Créer une nouvelle facture",
+      "url": "/?action=new_invoice",
+      "icons": [{ "src": "/icons/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
