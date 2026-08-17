@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Client, CompanySettings, DocumentType, Invoice, InvoiceItem, ServiceUnit } from '../types';
+import { DEFAULT_INITIAL_ITEM, SERVICE_PRESETS } from '../data/defaultServices';
 import { calculateInvoiceTotals, formatCurrency, generateNextDocumentNumber } from '../utils/calculations';
 import { downloadInvoicePDF } from '../utils/pdfGenerator';
 
@@ -21,57 +22,6 @@ interface InvoiceEditorProps {
   onCancel: () => void;
   onAddClientInline: () => void;
 }
-
-const SERVICE_PRESETS = [
-  {
-    description: 'Fourniture et pose de fenêtres Aluminium double vitrage profilé thermique',
-    category: 'Fourniture & Pose' as const,
-    unit: 'U' as ServiceUnit,
-    quantity: 4,
-    unitPriceHT: 45000,
-    vatRate: 9
-  },
-  {
-    description: 'Fourniture et pose de dalle de sol Grès Cérame 60x60cm Mât avec mortier colle spécial',
-    category: 'Fourniture & Pose' as const,
-    unit: 'm²' as ServiceUnit,
-    quantity: 50,
-    unitPriceHT: 3500,
-    vatRate: 9
-  },
-  {
-    description: 'Fourniture et pose de garde-corps vitré inox pour balcons et terrasses',
-    category: 'Fourniture & Pose' as const,
-    unit: 'ml' as ServiceUnit,
-    quantity: 15,
-    unitPriceHT: 18500,
-    vatRate: 9
-  },
-  {
-    description: 'Fourniture et pose de faux plafond en plaques de plâtre BA13 avec ossature métallique',
-    category: 'Fourniture & Pose' as const,
-    unit: 'm²' as ServiceUnit,
-    quantity: 80,
-    unitPriceHT: 2400,
-    vatRate: 9
-  },
-  {
-    description: 'Main d\'œuvre de pose et mise en œuvre chantier par équipe spécialisée',
-    category: 'Pose seule' as const,
-    unit: 'Jour' as ServiceUnit,
-    quantity: 3,
-    unitPriceHT: 15000,
-    vatRate: 9
-  },
-  {
-    description: 'Forfait dépose ancienne installation, préparation du support et nettoyage chantier',
-    category: 'Pose seule' as const,
-    unit: 'Forfait' as ServiceUnit,
-    quantity: 1,
-    unitPriceHT: 25000,
-    vatRate: 9
-  }
-];
 
 export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   initialInvoice,
@@ -97,6 +47,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       setClientId(clients[0].id);
     }
   }, [clients, clientId]);
+
   const [issueDate, setIssueDate] = useState(
     initialInvoice?.issueDate || new Date().toISOString().split('T')[0]
   );
@@ -119,14 +70,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
       : [
           {
             id: `item-${Date.now()}-1`,
-            description: 'Fourniture et pose de fenêtres Aluminium double vitrage profilé thermique',
-            category: 'Fourniture & Pose',
-            unit: 'U',
-            quantity: 2,
-            unitPriceHT: 45000,
-            vatRate: company.defaultVatRate || 9,
+            description: DEFAULT_INITIAL_ITEM.description,
+            category: DEFAULT_INITIAL_ITEM.category,
+            unit: DEFAULT_INITIAL_ITEM.unit,
+            quantity: DEFAULT_INITIAL_ITEM.quantity,
+            unitPriceHT: DEFAULT_INITIAL_ITEM.unitPriceHT,
+            vatRate: company.defaultVatRate || DEFAULT_INITIAL_ITEM.vatRate,
             discountPercent: 0,
-            totalHT: 90000
+            totalHT: DEFAULT_INITIAL_ITEM.quantity * DEFAULT_INITIAL_ITEM.unitPriceHT
           }
         ]
   );
