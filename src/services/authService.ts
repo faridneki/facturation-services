@@ -65,9 +65,13 @@ export const getStoredCredentials = (): { username: string; passwordHash: string
 export const authService = {
   isAuthenticated(): boolean {
     const raw = safeGetItem(AUTH_KEY);
-    if (raw === 'logged_out') return false;
-    // Default to true for seamless preview experience
-    return true;
+    if (!raw || raw === 'logged_out') return false;
+    try {
+      const parsed = JSON.parse(raw);
+      return !!(parsed && parsed.username);
+    } catch {
+      return false;
+    }
   },
 
   getCurrentUser(): User | null {
