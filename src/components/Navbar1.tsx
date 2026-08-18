@@ -1,4 +1,4 @@
-import { Building2, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, Shield, Users } from 'lucide-react';
+import { Building2, Code, Database, FileText, KeyRound, LayoutDashboard, LogOut, Plus, RefreshCw, RotateCcw, Smartphone, Trash2, Users } from 'lucide-react';
 import React from 'react';
 import { User } from '../services/authService';
 
@@ -10,6 +10,10 @@ interface NavbarProps {
   onOpenSettings: () => void;
   onOpenPrismaModal: () => void;
   onOpenPasswordModal: () => void;
+  onOpenInstallModal?: () => void;
+  onClearDemoData: () => void;
+  onResetDemoData?: () => void;
+  onRefreshData?: () => void;
   onLogout: () => void;
   currentUser: User | null;
   companyName: string;
@@ -23,10 +27,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenPrismaModal,
   onOpenPasswordModal,
+  onOpenInstallModal,
+  onClearDemoData,
+  onResetDemoData,
+  onRefreshData,
   onLogout,
   currentUser,
   companyName
 }) => {
+
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -38,10 +47,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                Facture <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Fournitures & Services</span>
+                Factura <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">BTP & Services</span>
               </span>
               <p className="text-xs text-slate-400 truncate max-w-[180px] sm:max-w-xs">{companyName}</p>
-              <p className="text-bold text-emerald-300 ">ⴰⵏⵚⵓⴼ ⵢⵉⵙ ⵡⴻⵏ</p>
             </div>
           </div>
 
@@ -89,7 +97,61 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2">
-           
+            {onRefreshData && (
+              <button
+                id="refresh-db-btn"
+                onClick={onRefreshData}
+                title="Synchroniser / Rafraîchir les données depuis la base Neon PostgreSQL"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800 rounded-lg transition-all active:scale-95"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Sync Neon DB</span>
+              </button>
+            )}
+
+            {onResetDemoData && (
+              <button
+                id="reset-db-btn"
+                onClick={onResetDemoData}
+                title="Charger des exemples de test dans la base Neon"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 border border-blue-800 rounded-lg transition-all active:scale-95"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-blue-400" />
+                <span className="inline">Charger Exemples</span>
+              </button>
+            )}
+
+            <button
+              id="clear-db-btn"
+              onClick={onClearDemoData}
+              title="Vider la base de données"
+              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-800 rounded-lg transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+              <span>Vider</span>
+            </button>
+
+            <button
+              id="prisma-schema-btn"
+              onClick={onOpenPrismaModal}
+              title="Afficher le schéma Prisma & Base de données"
+              className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg transition-colors"
+            >
+              <Code className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Code Prisma</span>
+            </button>
+
+            {onOpenInstallModal && (
+              <button
+                id="install-android-btn"
+                onClick={onOpenInstallModal}
+                title="Installer l'application sur Android / Mobile"
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-medium bg-blue-900/40 hover:bg-blue-800/60 text-blue-300 border border-blue-700/60 rounded-lg transition-colors"
+              >
+                <Smartphone className="h-3.5 w-3.5 text-blue-400" />
+                <span className="hidden sm:inline">App Android</span>
+              </button>
+            )}
 
             <button
               id="security-settings-btn"

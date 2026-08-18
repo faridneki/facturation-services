@@ -15,7 +15,7 @@ export interface ServicePreset {
 export const DEFAULT_INITIAL_ITEM = {
   description: 'fourniture et pose de ravalement de façade en monocouche',
   category: 'Fourniture & Pose' as const,
-  unit: 'U' as ServiceUnit,
+  unit: 'm²' as ServiceUnit,
   quantity: 1,
   unitPriceHT: 2600,
   vatRate: 9,
@@ -29,7 +29,7 @@ export const DEFAULT_INITIAL_ITEM = {
 export const SERVICE_PRESETS: ServicePreset[] = [
   {description: 'fourniture et pose de ravalement de façade en monocouche',
   category: 'Fourniture & Pose' as const,
-  unit: 'U' as ServiceUnit,
+  unit: 'm²' as ServiceUnit,
   quantity: 1,
   unitPriceHT: 2600,
   vatRate: 9,
