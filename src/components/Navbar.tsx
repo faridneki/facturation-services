@@ -38,10 +38,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-                Facture <span className="text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">Fournitures & Services</span>
+                Facturation
               </span>
               <p className="text-xs text-slate-400 truncate max-w-[180px] sm:max-w-xs">{companyName}</p>
-              <p className="text-bold text-emerald-300 ">ⴰⵏⵚⵓⴼ ⵢⵉⵙ ⵡⴻⵏ</p>
+              <p className="text-bold text-green-400  sm:max-w-xs">ⴰⵏⵚⵓⴼ ⵢⵉⵙ ⵡⴻⵏ</p>
             </div>
           </div>
 
