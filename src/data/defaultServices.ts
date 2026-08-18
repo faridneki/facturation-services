@@ -13,11 +13,11 @@ export interface ServicePreset {
  * Article par défaut ajouté automatiquement lors de la création d'une nouvelle facture vierge.
  */
 export const DEFAULT_INITIAL_ITEM = {
-  description: 'Fourniture et pose de fenêtres Aluminium double vitrage profilé thermique',
+  description: 'fourniture et pose de ravalement de façade en monocouche',
   category: 'Fourniture & Pose' as const,
   unit: 'U' as ServiceUnit,
   quantity: 1,
-  unitPriceHT: 45000,
+  unitPriceHT: 2600,
   vatRate: 9,
   discountPercent: 0,
 };
@@ -27,30 +27,15 @@ export const DEFAULT_INITIAL_ITEM = {
  * Vous pouvez modifier, ajouter ou supprimer des articles dans cette liste.
  */
 export const SERVICE_PRESETS: ServicePreset[] = [
-  {
-    description: 'Fourniture et pose de fenêtres Aluminium double vitrage profilé thermique',
-    category: 'Fourniture & Pose',
-    unit: 'U',
-    quantity: 4,
-    unitPriceHT: 45000,
-    vatRate: 9,
+  {description: 'fourniture et pose de ravalement de façade en monocouche',
+  category: 'Fourniture & Pose' as const,
+  unit: 'U' as ServiceUnit,
+  quantity: 1,
+  unitPriceHT: 2600,
+  vatRate: 9,
+  
   },
-  {
-    description: 'Fourniture et pose de dalle de sol Grès Cérame 60x60cm Mât avec mortier colle spécial',
-    category: 'Fourniture & Pose',
-    unit: 'm²',
-    quantity: 50,
-    unitPriceHT: 3500,
-    vatRate: 9,
-  },
-  {
-    description: 'Fourniture et pose de garde-corps vitré inox pour balcons et terrasses',
-    category: 'Fourniture & Pose',
-    unit: 'ml',
-    quantity: 15,
-    unitPriceHT: 18500,
-    vatRate: 9,
-  },
+ 
   {
     description: 'Fourniture et pose de faux plafond en plaques de plâtre BA13 avec ossature métallique',
     category: 'Fourniture & Pose',
